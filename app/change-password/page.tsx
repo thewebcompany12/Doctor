@@ -6,8 +6,7 @@ import { changeTemporaryPassword } from "./actions";
 const errors: Record<string,string> = {
   policy: "Use at least 12 characters, including uppercase, lowercase and a number.",
   mismatch: "The passwords do not match.",
-  update: "The password could not be changed. Check the requirements and retry.",
-  clear: "Your password changed, but the onboarding flag could not be cleared. Contact support before signing out."
+  update: "The password could not be changed. Check the requirements and retry."
 };
 
 export default async function ChangePasswordPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
