@@ -6,7 +6,7 @@ import Link from "next/link";
 
 type BookingResult = { token: { displayToken: string; tokenNumber: number; expiresAt: string }; trackingSecret: string; notice: string };
 
-export default function OnlineTokenBooking({ queueId, clinicName, doctorName }: { queueId: string; clinicName: string; doctorName: string }) {
+export default function OnlineTokenBooking({ queueId, clinicName, doctorName, bookingConfigured }: { queueId: string; clinicName: string; doctorName: string; bookingConfigured: boolean }) {
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [result,setResult]=useState<BookingResult|null>(null);
@@ -47,6 +47,8 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName }: 
     try { await navigator.clipboard.writeText(result.trackingSecret);setCopied(true); }
     catch { setCopied(false); }
   }
+
+  if(!bookingConfigured) return <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">Online booking is temporarily unavailable because the clinic booking service has not been configured. Please contact reception for a token.</div>;
 
   return <details className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
     <summary className="cursor-pointer font-bold text-[#147d55]">Book an online token</summary>
