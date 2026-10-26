@@ -27,7 +27,7 @@ The connected Supabase project reports these applied migration versions:
 21. `20261026153623 least_privilege_table_grants`
 22. `20261026153807 password_change_flag_auth_trigger`
 
-The repository now contains version-matched SQL files for this history. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
+The repository contains version-matched SQL files for the applied history. The baseline was reconstructed from live catalog metadata because the original applied source was absent from GitHub. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
 
 ## Safe workflow
 
