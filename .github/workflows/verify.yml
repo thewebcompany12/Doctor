@@ -96,6 +96,9 @@ jobs:
             ) then raise exception 'Authenticated role has TRUNCATE on a public table'; end if;
             if to_regclass('public.public_queue_status') is not null then raise exception 'Legacy public queue view remains'; end if;
             if to_regprocedure('public.has_clinic_role(uuid,text[])') is not null then raise exception 'RLS helper remains exposed in public schema'; end if;
+            if has_function_privilege('anon','public.issue_public_queue_token(uuid,text,text)','EXECUTE') then raise exception 'Anonymous role can invoke online token issuance'; end if;
+            if has_function_privilege('authenticated','public.issue_public_queue_token(uuid,text,text)','EXECUTE') then raise exception 'Authenticated users can invoke the service-only online booking RPC'; end if;
+            if not has_function_privilege('service_role','public.issue_public_queue_token(uuid,text,text)','EXECUTE') then raise exception 'Service role cannot invoke the online booking RPC'; end if;
           end $$;
           SQL
 
