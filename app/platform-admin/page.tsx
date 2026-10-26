@@ -5,6 +5,7 @@ import ClinicProvisioningForm from "./clinic-provisioning-form";
 import ClinicDirectoryActions from "./clinic-directory-actions";
 
 type ClinicRow = { id: string; clinic_code: string; name: string; address: string | null; city: string | null; state: string | null; phone: string | null; is_active: boolean; is_public: boolean; created_at: string };
+type AuditRow = { id: string; clinic_id: string | null; actor_user_id: string | null; action: string; target_type: string | null; target_id: string | null; metadata: Record<string, unknown>; created_at: string };
 
 export default async function PlatformAdminPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   let supabase;
@@ -15,6 +16,8 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
   if (roleError || !isAdmin) redirect("/workspace");
 
   const { q = "" } = await searchParams;
+  const { data: auditData } = await supabase.from("audit_logs").select("id,clinic_id,actor_user_id,action,target_type,target_id,metadata,created_at").order("created_at",{ascending:false}).limit(50);
+  const auditRows = (auditData ?? []) as AuditRow[];
   const { data, error } = await supabase.from("clinics")
     .select("id,clinic_code,name,address,city,state,phone,is_active,is_public,created_at")
     .order("created_at", { ascending: false }).limit(500);
@@ -40,6 +43,11 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
         </div>
         {clinics.length === 0 ? <p className="mt-6 rounded-xl border border-dashed border-[#cbd9d0] p-8 text-center text-sm text-[#65736d]">No clinics match this search.</p> :
           <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="border-b border-[#e1e9e4] text-[#65736d]"><th className="px-3 py-3">Clinic</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Clinic ID</th><th className="px-3 py-3">Created</th><th className="px-3 py-3">Actions</th></tr></thead><tbody>{clinics.map(c=><tr key={c.id} className="border-b border-[#edf1ee]"><td className="px-3 py-4 font-bold">{c.name}</td><td className="px-3 py-4">{[c.city,c.state].filter(Boolean).join(", ") || "—"}</td><td className="px-3 py-4"><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{!c.is_public ? "Archived" : c.is_active ? "Active" : "Suspended"}</span></td><td className="px-3 py-4 font-mono">{c.clinic_code}</td><td className="px-3 py-4">{new Date(c.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</td><td className="px-3 py-4"><ClinicDirectoryActions clinicId={c.id} status={!c.is_public ? "archived" : c.is_active ? "active" : "suspended"} name={c.name} address={c.address} city={c.city} state={c.state} phone={c.phone} /></td></tr>)}</tbody></table></div>}
+      </section>
+      <section className="mt-8 rounded-2xl border border-[#e1e9e4] bg-white p-6">
+        <div><h2 className="text-xl font-black">Administrative action history</h2><p className="mt-1 text-sm text-[#65736d]">Latest 50 recorded platform and clinic actions.</p></div>
+        {auditRows.length === 0 ? <p className="mt-5 rounded-xl border border-dashed border-[#cbd9d0] p-6 text-sm text-[#65736d]">No administrative actions have been recorded yet.</p> :
+          <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-[#e1e9e4] text-[#65736d]"><th className="px-3 py-3">Action</th><th className="px-3 py-3">Clinic</th><th className="px-3 py-3">Target</th><th className="px-3 py-3">Time (IST)</th></tr></thead><tbody>{auditRows.map(row=><tr key={row.id} className="border-b border-[#edf1ee]"><td className="px-3 py-3 font-bold">{row.action}</td><td className="px-3 py-3 font-mono text-xs">{row.clinic_id ?? "Platform"}</td><td className="px-3 py-3">{row.target_type ?? "—"}{row.target_id ? " · " + row.target_id.slice(0,8) : ""}</td><td className="px-3 py-3">{new Date(row.created_at).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"})}</td></tr>)}</tbody></table></div>}
       </section>
       <p className="mt-6 text-sm text-[#65736d]">Every platform-admin route verifies the Super Admin role server-side. Owner provisioning requires a server-only service-role key and is intentionally unavailable until that credential is configured.</p>
     </section>
