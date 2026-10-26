@@ -17,7 +17,7 @@ function estimate(minutes:number|null){
  return "About "+Math.floor(minutes/60)+" hr "+(minutes%60)+" min";
 }
 
-export default function TokenStatusLookup() {
+export default function TokenStatusLookup({ trackingConfigured }: { trackingConfigured: boolean }) {
   const [trackingSecret,setTrackingSecret]=useState("");
   const [busy,setBusy]=useState(false);
   const [cancelBusy,setCancelBusy]=useState(false);
@@ -89,6 +89,7 @@ export default function TokenStatusLookup() {
 
   return <div className="mt-8 rounded-2xl border border-[#e1e9e4] bg-white p-5 sm:p-6">
     <h2 className="text-xl font-black">Look up your token</h2>
+    {!trackingConfigured&&<p role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">Private token tracking is temporarily unavailable because the server-side booking credential is not configured. Your token details are not being exposed publicly. Please contact the clinic until the service is configured.</p>}
     <p className="mt-2 text-sm leading-6 text-[#65736d]">Open the private link from your booking or enter the 64-character tracking secret. The secret expires 48 hours after booking and must be kept private.</p>
     <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
       <label className="text-sm font-bold">Private tracking secret<input required name="trackingSecret" value={trackingSecret} onChange={e=>setTrackingSecret(e.target.value.trim())} autoComplete="off" spellCheck={false} minLength={64} maxLength={64} pattern="[a-fA-F0-9]{64}" className="mt-1 w-full rounded-xl border border-[#dbe5df] px-3 py-2.5 font-mono text-sm font-normal"/></label>
