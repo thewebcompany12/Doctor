@@ -39,8 +39,9 @@ The connected Supabase project reports these applied migration versions:
 33. `20261026155101 atomic_staff_invitation_membership`
 34. `20261026155112 atomic_staff_invitation_membership_fix`
 35. `20261026155318 private_queue_rpc_implementations`
+36. `20261026155607 enforce_walkin_plan_at_issue`
 
-The repository contains version-matched SQL files for all 35 applied migrations. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. GitHub Actions successfully applied the full migration chain to a clean PostgreSQL 16 database with a minimal Supabase auth/role shim, then passed schema/RLS/grant assertions and synthetic two-clinic authorization checks. This validates migration order and SQL behavior in the CI harness; it is not a substitute for a full Supabase-managed local stack test.
+The repository contains version-matched SQL files for all 36 applied migrations. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. GitHub Actions successfully applied the full migration chain to a clean PostgreSQL 16 database with a minimal Supabase auth/role shim, then passed schema/RLS/grant assertions and synthetic two-clinic authorization checks. This validates migration order and SQL behavior in the CI harness; it is not a substitute for a full Supabase-managed local stack test.
 
 ## Safe workflow
 
