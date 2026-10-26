@@ -4,11 +4,12 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type Clinic = { id: string; name: string; clinic_code: string; role: string };
+type Clinic = { id: string; name: string; clinic_code: string; role: string; address: string | null; city: string | null; state: string | null; phone: string | null };
+type Branch = { id: string; clinic_id: string; branch_code: string; name: string; city: string | null; state: string | null; is_active: boolean };
 type Queue = { id: string; clinic_id: string; service_date: string; status: string; token_prefix: string; online_booking_enabled: boolean; walk_in_enabled: boolean; max_tokens: number | null; next_token_number: number; doctors: { full_name: string; specialty: string | null } | null };
 type Token = { id: string; queue_id: string; token_number: number; display_token: string; patient_label: string; status: string };
 
-export default function QueueDashboard({ clinics, queues, tokens }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[] }) {
+export default function QueueDashboard({ clinics, queues, tokens, branches }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[]; branches: Branch[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
@@ -27,6 +28,34 @@ export default function QueueDashboard({ clinics, queues, tokens }: { clinics: C
       setError(e instanceof Error ? e.message : "The operation failed.");
       return null;
     } finally { setBusy(""); }
+  }
+
+  async function updateProfile(event: FormEvent<HTMLFormElement>, clinic: Clinic) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    await rpc("update_clinic_profile", {
+      p_clinic_id: clinic.id, p_name: String(data.get("name") ?? "").trim(),
+      p_address: String(data.get("address") ?? "").trim() || null,
+      p_city: String(data.get("city") ?? "").trim() || null,
+      p_state: String(data.get("state") ?? "").trim() || null,
+      p_phone: String(data.get("phone") ?? "").trim() || null
+    }, "Clinic profile saved.");
+  }
+
+  async function createBranch(event: FormEvent<HTMLFormElement>, clinic: Clinic) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const result = await rpc("create_clinic_branch", {
+      p_clinic_id: clinic.id, p_branch_code: String(data.get("branchCode") ?? "").trim(),
+      p_name: String(data.get("branchName") ?? "").trim(),
+      p_address: String(data.get("branchAddress") ?? "").trim() || null,
+      p_city: String(data.get("branchCity") ?? "").trim() || null,
+      p_state: String(data.get("branchState") ?? "").trim() || null,
+      p_postal_code: String(data.get("postalCode") ?? "").trim() || null,
+      p_phone: String(data.get("branchPhone") ?? "").trim() || null
+    }, "Branch created.");
+    if (result) form.reset();
   }
 
   async function setupQueue(event: FormEvent<HTMLFormElement>, clinic: Clinic) {
@@ -77,6 +106,29 @@ export default function QueueDashboard({ clinics, queues, tokens }: { clinics: C
       const clinicQueues = queues.filter(q => q.clinic_id === clinic.id);
       return <section key={clinic.id} className="rounded-2xl border border-[#e1e9e4] bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-black">{clinic.name}</h2><p className="mt-1 text-sm text-[#65736d]">{clinic.clinic_code} · {clinic.role}</p></div><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{clinicQueues.length} queue(s) today</span></div>
+        {canSetup && <details className="mt-4 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Clinic profile and contact</summary>
+          <form onSubmit={event => updateProfile(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-bold">Clinic name<input required name="name" defaultValue={clinic.name} maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">Phone<input name="phone" defaultValue={clinic.phone ?? ""} maxLength={30} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold sm:col-span-2">Address<input name="address" defaultValue={clinic.address ?? ""} maxLength={240} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">City<input name="city" defaultValue={clinic.city ?? ""} maxLength={100} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">State<input name="state" defaultValue={clinic.state ?? ""} maxLength={100} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <button disabled={!!busy} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white sm:col-span-2">{busy === "update_clinic_profile" ? "Saving…" : "Save clinic profile"}</button>
+          </form>
+        </details>}
+        {canSetup && <details className="mt-3 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Branches ({branches.filter(b=>b.clinic_id===clinic.id).length})</summary>
+          <div className="mt-3 space-y-2">{branches.filter(b=>b.clinic_id===clinic.id).map(branch=><div key={branch.id} className="flex flex-wrap justify-between gap-2 rounded-lg bg-[#f6f9f7] p-3 text-sm"><span className="font-bold">{branch.name} <span className="font-mono text-xs text-[#65736d]">({branch.branch_code})</span></span><span className="text-[#65736d]">{[branch.city,branch.state].filter(Boolean).join(", ") || "Location not set"} · {branch.is_active ? "Active" : "Inactive"}</span></div>)}</div>
+          <form onSubmit={event => createBranch(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-bold">Branch code<input required name="branchCode" pattern="[A-Za-z0-9-]{2,16}" maxLength={16} placeholder="MAIN-2" className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">Branch name<input required name="branchName" maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold sm:col-span-2">Address<input name="branchAddress" maxLength={240} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">City<input name="branchCity" maxLength={100} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">State<input name="branchState" maxLength={100} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">Postal code<input name="postalCode" maxLength={16} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">Phone<input name="branchPhone" maxLength={30} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <button disabled={!!busy} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white sm:col-span-2">{busy === "create_clinic_branch" ? "Creating…" : "Create branch"}</button>
+          </form>
+        </details>}
         {canSetup && <details className="mt-5 rounded-xl border border-dashed border-[#cbd9d0] p-4"><summary className="cursor-pointer font-bold">Set up / configure today’s doctor queue</summary>
           <form onSubmit={event => setupQueue(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold">Doctor name<input required name="doctorName" maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
