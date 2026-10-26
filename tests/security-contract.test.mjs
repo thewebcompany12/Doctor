@@ -209,3 +209,20 @@ test("staff membership attachment cannot be invoked directly by clinic users", a
   const legacy = await file("../supabase/migrations/20261026161405_revoke_legacy_staff_rpc.sql");
   assert.match(legacy, /revoke all on function private\.attach_invited_staff\(uuid,uuid,text,text\) from public,anon,authenticated,service_role/i);
 });
+
+
+test("public online token booking is rate-limited and keeps tracking credentials private", async () => {
+  const sql = await file("../supabase/migrations/20261026161045_public_online_token_booking.sql");
+  assert.match(sql, /private\.issue_public_queue_token_impl/);
+  assert.match(sql, /extensions\.gen_random_bytes\(32\)/);
+  assert.match(sql, /extensions\.digest\(convert_to\(v_secret,'UTF8'\),'sha256'\)/);
+  assert.match(sql, /interval '15 minutes'/);
+  assert.match(sql, /subscription,booking,online/);
+  assert.match(sql, /revoke all on function public\.issue_public_queue_token\(uuid,text,text\) from public,anon,authenticated/i);
+  assert.match(sql, /grant execute on function public\.issue_public_queue_token\(uuid,text,text\) to service_role/i);
+  const route = await file("../app/api/public/tokens/route.ts");
+  assert.match(route, /createHmac\("sha256",key\)/);
+  assert.match(route, /createHash\("sha256"\)/);
+  assert.match(route, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(route, /NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/);
+});
