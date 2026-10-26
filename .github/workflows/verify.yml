@@ -208,7 +208,7 @@ jobs:
           for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
           test "$failed" -eq 0
           psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
-          do $
+          do $check$
           declare n integer; unique_n integer; next_n integer; first_id uuid; second_id uuid;
           begin
             select count(*),count(distinct token_number) into n,unique_n from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';
@@ -221,7 +221,7 @@ jobs:
             if first_id is distinct from second_id then raise exception 'Repeated idempotency key allocated multiple tokens'; end if;
             select count(*) into n from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';
             if n<>21 then raise exception 'Idempotent repeat created extra token; count=%',n; end if;
-          end $;
+          end $check$;
           SQL
 
       - name: Stress concurrent token allocation and idempotency
