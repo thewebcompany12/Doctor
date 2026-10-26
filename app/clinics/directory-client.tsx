@@ -17,8 +17,8 @@ export type QueueSummary = {
   clinic_city: string | null; clinic_address: string | null; opens_at: string | null; closes_at: string | null; is_closed: boolean;
 };
 
-export default function ClinicDirectoryClient({ clinics, queues, initialClinic, initialQuery }: {
-  clinics: PublicClinic[]; queues: QueueSummary[]; initialClinic: string; initialQuery: string;
+export default function ClinicDirectoryClient({ clinics, queues, bookingConfigured, initialClinic, initialQuery }: {
+  clinics: PublicClinic[]; queues: QueueSummary[]; bookingConfigured: boolean; initialClinic: string; initialQuery: string;
 }) {
   const [query,setQuery]=useState(initialQuery);
   const [city,setCity]=useState("");
@@ -86,7 +86,7 @@ export default function ClinicDirectoryClient({ clinics, queues, initialClinic, 
             <div className="mt-3 grid grid-cols-3 gap-2"><div><p className="text-[11px] text-[#65736d]">Now calling</p><p className="font-black">{q.current_display_token||"—"}</p></div><div><p className="text-[11px] text-[#65736d]">Waiting</p><p className="font-black">{q.waiting_count}</p></div><div><p className="text-[11px] text-[#65736d]">{q.is_closed?text.closed:text.open}</p><p className="font-black text-sm">{q.opens_at&&q.closes_at? q.opens_at.slice(0,5)+"–"+q.closes_at.slice(0,5):"—"}</p></div></div>
             <p className="mt-2 text-[11px] text-[#65736d]">{text.updated} {new Date(q.updated_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"})} IST</p>
             <div className="mt-3 flex flex-wrap items-center gap-3"><Link href={"/queue/"+q.queue_id} className="text-sm font-bold text-[#147d55] underline">{text.viewQueue} <ArrowUpRight size={14} className="inline"/></Link>{q.online_booking_enabled&&q.queue_status==="open"?<span className="text-xs font-bold text-[#147d55]">{text.onlineBooking}</span>:<span className="text-xs text-[#65736d]">{text.walkin}</span>}</div>
-            {q.online_booking_enabled&&q.queue_status==="open"&&<OnlineTokenBooking queueId={q.queue_id} clinicName={q.clinic_name} doctorName={q.doctor_name}/>}
+            {q.online_booking_enabled&&q.queue_status==="open"&&<OnlineTokenBooking queueId={q.queue_id} clinicName={q.clinic_name} doctorName={q.doctor_name} bookingConfigured={bookingConfigured}/>}
           </div>)}</div>}
         </div>
         <div className="mt-5 flex flex-wrap gap-3"><Link href={href} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white">{text.details} <ArrowUpRight size={15} className="inline"/></Link>{maps&&<a href={maps} target="_blank" rel="noreferrer" className="rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold">{text.directions}</a>}</div>
