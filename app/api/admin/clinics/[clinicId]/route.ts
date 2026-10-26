@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ cl
   if (!parsed.success) return NextResponse.json({ error: "Invalid clinic update.", details: parsed.error.flatten() }, { status: 400 });
 
   const adminClient = createClient(serviceUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: before, error: readError } = await adminClient.from("clinics").select("id,clinic_code,name,is_active,is_public").eq("id", clinicId).maybeSingle();
+  const { data: before, error: readError } = await adminClient.from("clinics").select("id,clinic_code,name,address,city,state,phone,is_active,is_public").eq("id", clinicId).maybeSingle();
   if (readError) return NextResponse.json({ error: "Could not read clinic." }, { status: 500 });
   if (!before) return NextResponse.json({ error: "Clinic not found." }, { status: 404 });
 
@@ -53,6 +53,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ cl
     target_type: "clinic", target_id: clinicId,
     metadata: { before: { name: before.name, is_active: before.is_active, is_public: before.is_public }, after: { name: updated.name, is_active: updated.is_active, is_public: updated.is_public } }
   });
-  if (auditError) return NextResponse.json({ error: "Clinic changed but its audit record failed. Investigate audit logging immediately." }, { status: 500 });
+  if (auditError) {
+    await adminClient.from("clinics").update({
+      name: before.name, address: before.address, city: before.city, state: before.state, phone: before.phone,
+      is_active: before.is_active, is_public: before.is_public
+    }).eq("id", clinicId);
+    return NextResponse.json({ error: "Audit record failed; the clinic change was rolled back where possible." }, { status: 500 });
+  }
   return NextResponse.json({ clinic: updated }, { headers: { "Cache-Control": "no-store" } });
 }
