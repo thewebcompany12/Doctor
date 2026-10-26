@@ -223,4 +223,51 @@ jobs:
             if n<>21 then raise exception 'Idempotent repeat created extra token; count=%',n; end if;
           end $check$;
           SQL
-
+- name: Test public online booking, rate limits and tracking privacy
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          insert into public.clinics(id,clinic_code,name,is_active,is_public)
+          values ('dddddddd-0000-4000-8000-000000000001','DQ-ONLINE-TEST','Synthetic Online Clinic',true,true);
+          insert into public.doctors(id,clinic_id,full_name,specialty,is_active,is_public)
+          values ('dddddddd-0000-4000-8000-000000000011','dddddddd-0000-4000-8000-000000000001','Synthetic Online Doctor','Test',true,true);
+          insert into public.queues(id,clinic_id,doctor_id,service_date,status,token_prefix,next_token_number,online_booking_enabled,walk_in_enabled,max_tokens)
+          values ('dddddddd-0000-4000-8000-000000000111','dddddddd-0000-4000-8000-000000000001','dddddddd-0000-4000-8000-000000000011',(timezone('Asia/Kolkata',now()))::date,'open','O',1,true,true,50);
+          insert into public.clinic_settings(clinic_id,settings)
+          values ('dddddddd-0000-4000-8000-000000000001','{"subscription":{"booking":{"online":true,"walkIn":true},"limits":{"dailyTokens":50}}}'::jsonb)
+          on conflict (clinic_id) do update set settings=excluded.settings;
+          set local role service_role;
+          do $check$
+          declare v_token record; n integer; v_secret_hash text; i integer;
+          begin
+            select * into v_token from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Synthetic online patient',repeat('a',64));
+            v_secret_hash:=encode(extensions.digest(convert_to(v_token.tracking_secret,'UTF8'),'sha256'),'hex');
+            if not exists(select 1 from public.queue_tokens where id=v_token.token_id and tracking_secret_hash=v_secret_hash and tracking_secret_hash<>v_token.tracking_secret and booking_source='online' and tracking_expires_at>now()) then
+              raise exception 'Online booking did not persist a hashed, expiring tracking secret';
+            end if;
+            if exists(select 1 from public.public_queue_snapshots s where s.queue_id='dddddddd-0000-4000-8000-000000000111' and (to_jsonb(s) ? 'patient_label' or to_jsonb(s) ? 'tracking_secret_hash')) then
+              raise exception 'Public queue snapshot exposed private token details';
+            end if;
+            for i in 2..8 loop
+              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Synthetic online patient',repeat('a',64));
+            end loop;
+            begin
+              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Rate limited patient',repeat('a',64));
+              raise exception 'Online booking rate limit was not enforced';
+            exception when sqlstate '54000' then null;
+            end;
+            update public.clinic_settings set settings=jsonb_set(settings,'{subscription,booking,online}','false'::jsonb) where clinic_id='dddddddd-0000-4000-8000-000000000001';
+            begin
+              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Plan disabled patient',repeat('b',64));
+              raise exception 'Online booking ignored the clinic plan gate';
+            exception when sqlstate '55000' then null;
+            end;
+            select count(*) into n from public.queue_tokens where queue_id='dddddddd-0000-4000-8000-000000000111';
+            if n<>8 then raise exception 'Expected 8 accepted online tokens, found %',n; end if;
+          end $check$;
+          reset role;
+          rollback;
+          SQL
