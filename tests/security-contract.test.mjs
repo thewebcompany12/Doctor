@@ -104,6 +104,13 @@ test("clinic provisioning requires authenticated Super Admin and verified owner 
   assert.match(source, /Cache-Control.*no-store/);
 });
 
+test("walk-in issuance enforces both queue and clinic plan controls", async () => {
+  const sql = await file("../supabase/migrations/20261026155542_enforce_walkin_plan_gate.sql");
+  assert.match(sql, /v_walkin_allowed/);
+  assert.match(sql, /Walk-in tokens are disabled by the queue or clinic plan/);
+  assert.match(sql, /private\.enforce_clinic_usage_limit\(v_queue\.clinic_id,'dailyTokens',v_clinic_count\)/);
+});
+
 test("queue and appointment RPC entry points are invoker wrappers", async () => {
   const sql = await file("../supabase/migrations/20261026155318_private_queue_rpc_implementations.sql");
   assert.match(sql, /FUNCTION private\./);
