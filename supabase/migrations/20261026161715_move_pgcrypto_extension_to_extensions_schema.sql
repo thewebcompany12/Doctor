@@ -1,1 +1,0 @@
-alter extension pgcrypto set schema extensions;
