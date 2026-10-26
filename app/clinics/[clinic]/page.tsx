@@ -44,7 +44,7 @@ export default async function ClinicDetailPage({ params }: { params: Promise<{ c
           <div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl bg-[#f7faf8] p-3"><p className="text-xs text-[#65736d]">Now calling</p><p className="mt-1 text-xl font-black">{q.current_display_token||"—"}</p></div><div className="rounded-xl bg-[#f7faf8] p-3"><p className="text-xs text-[#65736d]">Waiting</p><p className="mt-1 text-xl font-black">{q.waiting_count}</p></div></div>
           <p className="mt-4 flex items-center gap-2 text-sm text-[#65736d]"><Clock3 size={15}/>{q.opens_at&&q.closes_at&&!q.is_closed?q.opens_at.slice(0,5)+"–"+q.closes_at.slice(0,5):q.is_closed?"Closed today":"Hours not published"}</p>
           <div className="mt-4 flex flex-wrap gap-2"><Link href={"/queue/"+q.queue_id} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white">View live queue</Link>{q.online_booking_enabled&&q.queue_status==="open"?<span className="self-center text-xs font-bold text-[#147d55]">Online booking enabled</span>:<span className="self-center text-xs text-[#65736d]">Ask reception for a token</span>}</div>
-          {q.online_booking_enabled&&q.queue_status==="open"&&<OnlineTokenBooking queueId={q.queue_id} clinicName={q.clinic_name} doctorName={q.doctor_name}/>}
+          {q.online_booking_enabled&&q.queue_status==="open"&&<OnlineTokenBooking queueId={q.queue_id} clinicName={q.clinic_name} doctorName={q.doctor_name} bookingConfigured={Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)}/>}
         </article>)}</div>}
       </section>
     </section>
