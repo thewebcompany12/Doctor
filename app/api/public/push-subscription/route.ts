@@ -12,7 +12,8 @@ const schema=z.object({
   endpoint:z.string().url().max(2048),
   expirationTime:z.number().nullable().optional(),
   keys:z.object({p256dh:z.string().min(20).max(200),auth:z.string().min(10).max(100)})
- }).optional()
+ }).optional(),
+ preferences:z.object({turnApproaching:z.boolean(),yourTurn:z.boolean()}).optional()
 });
 function response(body:unknown,status=200){return NextResponse.json(body,{status,headers:{"Cache-Control":"no-store, private","Pragma":"no-cache"}});}
 function ip(request:Request){return request.headers.get("x-real-ip")??request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()??"unknown";}
@@ -58,7 +59,7 @@ export async function POST(request:Request){
   endpoint_hash:endpointHash,token_id:token.id,endpoint:input.subscription.endpoint,
   p256dh:input.subscription.keys.p256dh,auth_secret:input.subscription.keys.auth,
   expiration_time:input.subscription.expirationTime?new Date(input.subscription.expirationTime).toISOString():null,
-  enabled:true,preferences:{turn_approaching:true},updated_at:new Date().toISOString()
+  enabled:true,preferences:{turn_approaching:input.preferences?.turnApproaching??true,your_turn:input.preferences?.yourTurn??true},updated_at:new Date().toISOString()
  },{onConflict:"endpoint_hash"});
  if(error)return response({error:"Could not save notification settings."},503);
  return response({ok:true,message:"Turn reminders are enabled for this device."},201);
