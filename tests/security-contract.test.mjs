@@ -292,12 +292,14 @@ test("patient queue page uses real safe snapshots and has polling fallback", asy
   const page = await file("../app/queue/[queueId]/page.tsx");
   const live = await file("../app/queue/[queueId]/live-queue.tsx");
   const directory = await file("../app/clinics/directory-client.tsx");
+  const directoryPage = await file("../app/clinics/page.tsx");
   assert.match(page, /public_queue_snapshots/);
   assert.match(live, /postgres_changes/);
   assert.match(live, /setInterval/);
   assert.match(live, /15000/);
   assert.match(live, /Queue data may be stale/);
-  assert.match(directory, /public_clinic_directory/);
+  assert.match(directoryPage, /public_clinic_directory/);
+  assert.match(directoryPage, /public_queue_snapshots/);
   assert.match(directory, /specialties/);
   assert.match(directory, /onlineOnly/);
 });
