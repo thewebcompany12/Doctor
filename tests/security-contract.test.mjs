@@ -104,6 +104,20 @@ test("clinic provisioning requires authenticated Super Admin and verified owner 
   assert.match(source, /Cache-Control.*no-store/);
 });
 
+test("staff appointment workflow checks clinic role and configured hours", async () => {
+  const sql = await file("../supabase/migrations/20261026154936_staff_appointment_workflow.sql");
+  assert.match(sql, /private\.has_clinic_role\(p_clinic_id,array\['owner','manager','doctor','receptionist'\]\)/);
+  assert.match(sql, /Appointment time is outside configured opening hours/);
+  assert.match(sql, /insert into public\.appointments/);
+  assert.match(sql, /insert into public\.audit_logs/);
+});
+
+test("appointment audit records preserve the previous status", async () => {
+  const sql = await file("../supabase/migrations/20261026155005_appointment_audit_previous_status_fix.sql");
+  assert.match(sql, /v_previous:=v_appointment\.status/);
+  assert.match(sql, /'previous_status',v_previous/);
+});
+
 test("temporary-password flag clears only after an actual password hash change", async () => {
   const sql = await file("../supabase/migrations/20261026153807_password_change_flag_auth_trigger.sql");
   assert.match(sql, /new\.encrypted_password is distinct from old\.encrypted_password/i);
