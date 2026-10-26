@@ -85,8 +85,8 @@ export async function POST(request: Request) {
     await admin.auth.admin.deleteUser(invitedUser.id);
     return NextResponse.json({ error: "Staff profile setup failed; the invitation account was rolled back." }, { status: 500 });
   }
-  const { error: attachError } = await session.rpc("attach_invited_staff", {
-    p_clinic_id: input.clinicId, p_user_id: invitedUser.id, p_role: input.role, p_email: input.email
+  const { error: attachError } = await admin.rpc("attach_invited_staff", {
+    p_clinic_id: input.clinicId, p_user_id: invitedUser.id, p_role: input.role, p_email: input.email, p_actor_user_id: user.id
   });
   if (attachError) {
     await admin.auth.admin.deleteUser(invitedUser.id);
