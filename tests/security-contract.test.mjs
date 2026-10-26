@@ -114,7 +114,7 @@ test("doctor edits and branch activation are owner-scoped audited RPCs", async (
 });
 
 test("walk-in issuance enforces both queue and clinic plan controls", async () => {
-  const sql = await file("../supabase/migrations/20261026155542_enforce_walkin_plan_gate.sql");
+  const sql = await file("../supabase/migrations/20261026155607_enforce_walkin_plan_at_issue.sql");
   assert.match(sql, /v_walkin_allowed/);
   assert.match(sql, /Walk-in tokens are disabled by the queue or clinic plan/);
   assert.match(sql, /private\.enforce_clinic_usage_limit\(v_queue\.clinic_id,'dailyTokens',v_clinic_count\)/);
