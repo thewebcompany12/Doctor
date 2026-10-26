@@ -73,6 +73,7 @@ export default async function ClinicSubscriptionsPage({ searchParams }: { search
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#147d55]">Super Admin · Billing controls</p>
       <h1 className="mt-3 text-3xl font-black sm:text-4xl">Clinic subscriptions</h1>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-[#65736d]">Manage each clinic’s plan, usage limits, booking permissions and account status. Clinic IDs are generated during onboarding and shown below; plan changes are saved to the connected Supabase database and recorded in the administrative audit log.</p>
+      <ClinicProvisioningForm />
       <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <article className="rounded-2xl border bg-white p-4 sm:col-span-2"><p className="text-xs text-[#65736d]">Total clinics</p><p className="mt-1 text-3xl font-black">{allClinics.length}</p></article>
         <article className="rounded-2xl border bg-white p-4 sm:col-span-2"><p className="text-xs text-[#65736d]">Active</p><p className="mt-1 text-3xl font-black">{activeCount}</p></article>
@@ -94,7 +95,7 @@ export default async function ClinicSubscriptionsPage({ searchParams }: { search
             return <article key={clinic.id} className="grid gap-4 rounded-2xl border border-[#e1e9e4] p-4 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.85fr)] md:p-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2"><h3 className="text-lg font-black">{clinic.name}</h3><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold capitalize">{status}</span><span className="rounded-full border border-[#dbe5df] px-3 py-1 text-xs font-bold capitalize">{p.planCode}</span></div>
-                <p className="mt-2 break-all font-mono text-sm font-bold text-[#147d55]">Clinic ID: {clinic.clinic_code}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2"><p className="break-all font-mono text-sm font-bold text-[#147d55]">Clinic ID: {clinic.clinic_code}</p><ClinicIdCopy value={clinic.clinic_code}/></div>
                 <p className="mt-1 break-all text-xs text-[#65736d]">Internal record ID: {clinic.id}</p>
                 <p className="mt-2 text-sm text-[#65736d]">{[clinic.city, clinic.state].filter(Boolean).join(", ") || clinic.address || "Location not set"}{clinic.phone ? " · " + clinic.phone : ""}</p>
                 <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
