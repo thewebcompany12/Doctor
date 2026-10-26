@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import StaffInviteForm from "./staff-invite-form";
+import AppointmentPanel from "./appointment-panel";
 
 type Clinic = { id: string; name: string; clinic_code: string; role: string; address: string | null; city: string | null; state: string | null; phone: string | null };
 type Branch = { id: string; clinic_id: string; branch_code: string; name: string; city: string | null; state: string | null; is_active: boolean };
@@ -12,8 +13,9 @@ type ClinicHour = { id: string; clinic_id: string; doctor_id: string | null; wee
 type Queue = { id: string; clinic_id: string; service_date: string; status: string; token_prefix: string; online_booking_enabled: boolean; walk_in_enabled: boolean; max_tokens: number | null; next_token_number: number; doctors: { full_name: string; specialty: string | null } | null };
 type Token = { id: string; queue_id: string; token_number: number; display_token: string; patient_label: string; status: string };
 type QueueEvent = { id: string; clinic_id: string; queue_id: string; event_type: string; previous_status: string | null; new_status: string | null; reason: string | null; created_at: string; queue_tokens: { display_token: string } | null };
+type Appointment = { id: string; clinic_id: string; doctor_id: string; branch_id: string | null; patient_name: string; appointment_date: string; appointment_time: string; status: string };
 
-export default function QueueDashboard({ clinics, queues, tokens, branches, doctors, hours, events, actorEmail }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[]; branches: Branch[]; doctors: Doctor[]; hours: ClinicHour[]; events: QueueEvent[]; actorEmail: string }) {
+export default function QueueDashboard({ clinics, queues, tokens, branches, doctors, hours, events, appointments, today, actorEmail }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[]; branches: Branch[]; doctors: Doctor[]; hours: ClinicHour[]; events: QueueEvent[]; appointments: Appointment[]; today: string; actorEmail: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
@@ -126,6 +128,7 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
       return <section key={clinic.id} className="rounded-2xl border border-[#e1e9e4] bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-black">{clinic.name}</h2><p className="mt-1 text-sm text-[#65736d]">{clinic.clinic_code} · {clinic.role}</p></div><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{clinicQueues.length} queue(s) today</span></div>
         {canSetup && <StaffInviteForm clinicId={clinic.id} clinicName={clinic.name} actorRole={clinic.role} actorEmail={actorEmail} />}
+        <AppointmentPanel clinic={clinic} doctors={doctors} branches={branches} appointments={appointments} today={today} />
         {canSetup && <details className="mt-4 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Clinic profile and contact</summary>
           <form onSubmit={event => updateProfile(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold">Clinic name<input required name="name" defaultValue={clinic.name} maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
