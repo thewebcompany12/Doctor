@@ -199,6 +199,6 @@ test("staff membership attachment cannot be invoked directly by clinic users", a
   assert.match(sql, /grant execute on function public\.attach_invited_staff\(uuid,uuid,text,text,uuid\) to service_role/i);
   assert.match(sql, /revoke all on function private\.attach_invited_staff\(uuid,uuid,text,text,uuid\) from public,anon,authenticated/i);
   const route = await file("../app/api/clinic/staff/route.ts");
-  assert.match(route, /admin\.rpc\("attach_invited_staff"/);
+  assert.match(route, /serviceClient\.rpc\("attach_invited_staff"/);
   assert.match(route, /p_actor_user_id: user\.id/);
 });
