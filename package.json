@@ -26,10 +26,19 @@
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
-    "eslint": "^9.35.0",
-    "eslint-config-next": "^15.5.0",
+    "eslint": "9.35.0",
+    "eslint-config-next": "15.5.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0",
     "@types/web-push": "^3.6.4"
+  },
+  "overrides": {
+    "@typescript-eslint/eslint-plugin": "8.46.2",
+    "@typescript-eslint/parser": "8.46.2",
+    "@typescript-eslint/typescript-estree": "8.46.2",
+    "@typescript-eslint/scope-manager": "8.46.2",
+    "@typescript-eslint/visitor-keys": "8.46.2",
+    "@typescript-eslint/types": "8.46.2",
+    "@typescript-eslint/utils": "8.46.2"
   }
 }
