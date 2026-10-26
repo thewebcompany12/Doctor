@@ -81,22 +81,16 @@ export async function POST(request: Request) {
   const { error: profileError } = await admin.from("profiles").upsert({
     id: invitedUser.id, display_name: input.displayName?.trim() || input.email.split("@")[0], must_change_password: false
   });
-  const { error: addMembershipError } = await admin.from("clinic_memberships").insert({
-    clinic_id: input.clinicId, user_id: invitedUser.id, role: input.role, is_active: true
-  });
-  if (profileError || addMembershipError) {
-    await admin.from("clinic_memberships").delete().eq("clinic_id",input.clinicId).eq("user_id",invitedUser.id);
+  if (profileError) {
     await admin.auth.admin.deleteUser(invitedUser.id);
-    return NextResponse.json({ error: "Staff invitation setup failed; the created account was rolled back." }, { status: 500 });
+    return NextResponse.json({ error: "Staff profile setup failed; the invitation account was rolled back." }, { status: 500 });
   }
-  const { error: auditError } = await admin.from("audit_logs").insert({
-    clinic_id: input.clinicId, actor_user_id: user.id, action: "clinic.staff_invited", target_type: "user", target_id: invitedUser.id,
-    metadata: { email: input.email, role: input.role }
+  const { error: membershipError } = await session.rpc("attach_invited_staff", {
+    p_clinic_id: input.clinicId, p_user_id: invitedUser.id, p_role: input.role, p_email: input.email
   });
-  if (auditError) {
-    await admin.from("clinic_memberships").delete().eq("clinic_id",input.clinicId).eq("user_id",invitedUser.id);
+  if (membershipError) {
     await admin.auth.admin.deleteUser(invitedUser.id);
-    return NextResponse.json({ error: "Audit record failed; invitation and account were rolled back where possible." }, { status: 500 });
+    return NextResponse.json({ error: membershipError.message.includes("usage limit") ? "The clinic has reached its configured staff limit." : "Staff membership setup failed; the invitation account was rolled back." }, { status: 409 });
   }
   return NextResponse.json({ invited: true, email: input.email, role: input.role }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
