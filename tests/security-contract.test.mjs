@@ -59,6 +59,19 @@ test("authenticated users cannot directly mutate tenant tables or truncate", asy
   }
 });
 
+test("password recovery uses a verified callback and does not accept open redirects", async () => {
+  const request = await file("../app/forgot-password/actions.ts");
+  const callback = await file("../app/auth/callback/route.ts");
+  const reset = await file("../app/reset-password/actions.ts");
+  assert.match(request, /resetPasswordForEmail/);
+  assert.match(request, /auth\/callback\?next=\/reset-password/);
+  assert.match(callback, /exchangeCodeForSession/);
+  assert.match(callback, /requestedNext\.startsWith\("\/\/"\)/);
+  assert.match(callback, /requestedNext\.includes/);
+  assert.match(reset, /updateUser\(\{ password \}\)/);
+  assert.match(reset, /password\.length < 12/);
+});
+
 test("RLS helpers are private and public wrappers do not elevate privileges", async () => {
   const sql = await file("../supabase/migrations/20261026153551_private_security_helpers.sql");
   assert.match(sql, /create or replace function private\.has_clinic_role/);
