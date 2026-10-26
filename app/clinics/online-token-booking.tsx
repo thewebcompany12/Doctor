@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { Share2 } from "lucide-react";
 import Link from "next/link";
 
 type BookingResult = { token: { displayToken: string; tokenNumber: number; expiresAt: string }; trackingSecret: string; notice: string };
@@ -10,6 +11,8 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName }: 
   const [error,setError]=useState("");
   const [result,setResult]=useState<BookingResult|null>(null);
   const [copied,setCopied]=useState(false);
+  const [trackingUrl,setTrackingUrl]=useState("");
+  useEffect(()=>{if(result)setTrackingUrl(window.location.origin+"/token-status#secret="+result.trackingSecret);else setTrackingUrl("");},[result]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,6 +29,13 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName }: 
       form.reset();
     } catch { setError("Booking request failed. Check your connection and retry."); }
     finally { setBusy(false); }
+  }
+
+  async function shareTracking() {
+    if(!result||!trackingUrl)return;
+    const text="Doctor Queue token "+result.token.displayToken+" for "+clinicName+" · "+doctorName+"\\nPrivate tracking link: "+trackingUrl;
+    if(navigator.share){try{await navigator.share({title:"My Doctor Queue token",text,url:trackingUrl});return;}catch{/* share dialog was cancelled */}}
+    window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener,noreferrer");
   }
 
   async function copySecret() {
@@ -48,7 +58,8 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName }: 
       <p className="mt-2 text-sm">{result.notice}</p>
       <code className="mt-2 block break-all rounded-lg bg-[#f6f9f7] p-3 text-xs">{result.trackingSecret}</code>
       <button type="button" onClick={copySecret} className="mt-3 rounded-full border border-[#dbe5df] px-4 py-2 text-sm font-bold">{copied?"Tracking secret copied":"Copy tracking secret"}</button>
-      <Link href="/token-status" className="ml-3 inline-block text-sm font-bold text-[#147d55] underline">Check token status</Link>
+      <Link href={trackingUrl||"/token-status"} className="ml-3 inline-block text-sm font-bold text-[#147d55] underline">Open private tracking</Link>
+      <button type="button" onClick={()=>void shareTracking()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white"><Share2 size={15}/>Share on WhatsApp</button>
       <p className="mt-3 text-xs text-[#65736d]">Tracking access expires {new Date(result.token.expiresAt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"})} IST.</p>
       <button type="button" onClick={()=>setResult(null)} className="mt-3 block text-xs font-semibold underline">Close token details</button>
     </div>}
