@@ -35,8 +35,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ cl
   let patch: Record<string, unknown>;
   const action = parsed.data.action;
   if (action === "update") {
-    const { action: _action, ...fields } = parsed.data;
-    patch = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
+    patch = {};
+    if (parsed.data.name !== undefined) patch.name = parsed.data.name;
+    if (parsed.data.address !== undefined) patch.address = parsed.data.address;
+    if (parsed.data.city !== undefined) patch.city = parsed.data.city;
+    if (parsed.data.state !== undefined) patch.state = parsed.data.state;
+    if (parsed.data.phone !== undefined) patch.phone = parsed.data.phone;
     if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Provide at least one clinic field to update." }, { status: 400 });
   } else if (action === "activate") patch = { is_active: true, is_public: true };
   else if (action === "suspend") patch = { is_active: false, is_public: true };
