@@ -17,13 +17,13 @@ export type QueueSummary = {
   clinic_city: string | null; clinic_address: string | null; opens_at: string | null; closes_at: string | null; is_closed: boolean;
 };
 
-export default function ClinicDirectoryClient({ clinics, queues, bookingConfigured, initialClinic, initialQuery }: {
-  clinics: PublicClinic[]; queues: QueueSummary[]; bookingConfigured: boolean; initialClinic: string; initialQuery: string;
+export default function ClinicDirectoryClient({ clinics, queues, bookingConfigured, initialClinic, initialQuery, initialLanguage }: {
+  clinics: PublicClinic[]; queues: QueueSummary[]; bookingConfigured: boolean; initialClinic: string; initialQuery: string; initialLanguage: "en"|"hi";
 }) {
   const [query,setQuery]=useState(initialQuery);
   const [city,setCity]=useState("");
   const [specialty,setSpecialty]=useState("");
-  const [language,setLanguage]=useState<"en"|"hi">("en");
+  const [language,setLanguage]=useState<"en"|"hi">(initialLanguage);
   const [onlineOnly,setOnlineOnly]=useState(false);
   const text = language==="hi" ? {
     title:"क्लिनिक और डॉक्टर खोजें", intro:"केवल सार्वजनिक क्लिनिक जानकारी और असली कतार स्थिति दिखाई जाती है।",
@@ -72,7 +72,7 @@ export default function ClinicDirectoryClient({ clinics, queues, bookingConfigur
     {filtered.length===0 ? <div className="mt-8 rounded-2xl border border-dashed border-[#cbd9d0] bg-white p-10 text-center"><h2 className="text-xl font-extrabold">{text.noResults}</h2><p className="mt-2 text-sm text-[#65736d]">{text.noResultsBody}</p><button onClick={()=>{setQuery("");setCity("");setSpecialty("");setOnlineOnly(false);}} className="mt-4 rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white">Clear filters</button></div> :
     <div className="mt-8 grid gap-4 lg:grid-cols-2">{filtered.map(c=>{
       const clinicQueues=queues.filter(q=>q.clinic_code===c.clinic_code);
-      const href="/clinics/"+encodeURIComponent(c.clinic_slug||c.clinic_code);
+      const href="/clinics/"+encodeURIComponent(c.clinic_slug||c.clinic_code)+(language==="hi"?"?lang=hi":"");
       const maps=c.address||c.city ? "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent([c.address,c.city,c.state,c.postal_code].filter(Boolean).join(", ")) : null;
       return <article key={c.clinic_code} className="rounded-2xl border border-[#e1e9e4] bg-white p-5 sm:p-6">
         <div className="flex items-start gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#e9f7ef] text-[#147d55]"><Stethoscope size={23}/></span><div className="min-w-0 flex-1"><h2 className="text-lg font-extrabold">{c.clinic_name}</h2><p className="mt-1 text-xs text-[#65736d]">{c.clinic_code}</p>{(c.city||c.address)&&<p className="mt-2 flex items-start gap-1.5 text-sm text-[#65736d]"><MapPin size={15} className="mt-0.5 shrink-0"/>{[c.address,c.city,c.state,c.postal_code].filter(Boolean).join(", ")}</p>}</div></div>
@@ -85,8 +85,8 @@ export default function ClinicDirectoryClient({ clinics, queues, bookingConfigur
             <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-bold">{q.doctor_name}</p><p className="mt-0.5 text-xs text-[#65736d]">{q.specialty||"General consultation"}</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-bold capitalize">{q.queue_status.replaceAll("_"," ")}</span></div>
             <div className="mt-3 grid grid-cols-3 gap-2"><div><p className="text-[11px] text-[#65736d]">Now calling</p><p className="font-black">{q.current_display_token||"—"}</p></div><div><p className="text-[11px] text-[#65736d]">Waiting</p><p className="font-black">{q.waiting_count}</p></div><div><p className="text-[11px] text-[#65736d]">{q.is_closed?text.closed:text.open}</p><p className="font-black text-sm">{q.opens_at&&q.closes_at? q.opens_at.slice(0,5)+"–"+q.closes_at.slice(0,5):"—"}</p></div></div>
             <p className="mt-2 text-[11px] text-[#65736d]">{text.updated} {new Date(q.updated_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"})} IST</p>
-            <div className="mt-3 flex flex-wrap items-center gap-3"><Link href={"/queue/"+q.queue_id} className="text-sm font-bold text-[#147d55] underline">{text.viewQueue} <ArrowUpRight size={14} className="inline"/></Link>{q.online_booking_enabled&&q.queue_status==="open"?<span className="text-xs font-bold text-[#147d55]">{text.onlineBooking}</span>:<span className="text-xs text-[#65736d]">{text.walkin}</span>}</div>
-            {q.online_booking_enabled&&q.queue_status==="open"&&<OnlineTokenBooking queueId={q.queue_id} clinicName={q.clinic_name} doctorName={q.doctor_name} bookingConfigured={bookingConfigured}/>}
+            <div className="mt-3 flex flex-wrap items-center gap-3"><Link href={"/queue/"+q.queue_id+(language==="hi"?"?lang=hi":"")} className="text-sm font-bold text-[#147d55] underline">{text.viewQueue} <ArrowUpRight size={14} className="inline"/></Link>{q.online_booking_enabled&&q.queue_status==="open"?<span className="text-xs font-bold text-[#147d55]">{text.onlineBooking}</span>:<span className="text-xs text-[#65736d]">{text.walkin}</span>}</div>
+            {q.online_booking_enabled&&q.queue_status==="open"&&<OnlineTokenBooking queueId={q.queue_id} clinicName={q.clinic_name} doctorName={q.doctor_name} bookingConfigured={bookingConfigured} language={language}/>}
           </div>)}</div>}
         </div>
         <div className="mt-5 flex flex-wrap gap-3"><Link href={href} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white">{text.details} <ArrowUpRight size={15} className="inline"/></Link>{maps&&<a href={maps} target="_blank" rel="noreferrer" className="rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold">{text.directions}</a>}</div>
