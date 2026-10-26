@@ -20,7 +20,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 - CI assertions verified RLS is enabled on public base tables, anonymous reads are limited to the safe projection, and authenticated users do not have broad truncate privileges.
 - Synthetic two-clinic tests verified membership/token/appointment isolation, rejection of cross-clinic token issuance, staff appointment creation and status transitions, and anonymous aggregate-only queue visibility. Test data is rolled back.
 - Supabase Security Advisor returned no lints on the latest audit.
-- Live checks confirmed the deployed login, public clinic directory and password-recovery request page respond, while unauthenticated workspace and Super Admin routes redirect to sign-in. The active production deployment is commit `b1f9c2d5`; latest GitHub main is `5346c1f8` (docs-only changes after the latest green code verification). The newer doctor/branch management code is not live yet because a deployment request was blocked by Vercel's daily deployment API quota; no authenticated Vercel CLI fallback is available in this environment.
+- Live checks confirmed the deployed login, public clinic directory and password-recovery request page respond, while unauthenticated workspace and Super Admin routes redirect to sign-in. The active production deployment is commit `b1f9c2d5`; the current main branch is newer and includes doctor/branch management changes that are not live yet because a deployment request was blocked by Vercel's daily deployment API quota. No authenticated Vercel CLI fallback is available in this environment.
 
 ## Remaining blockers / limits
 
