@@ -117,9 +117,11 @@ jobs:
           insert into public.doctors(id,clinic_id,full_name,specialty,is_active,is_public) values
             ('aaaaaaaa-0000-4000-8000-000000000011','aaaaaaaa-0000-4000-8000-000000000001','Synthetic Doctor A','Test',true,true),
             ('bbbbbbbb-0000-4000-8000-000000000022','bbbbbbbb-0000-4000-8000-000000000002','Synthetic Doctor B','Test',true,true);
+          insert into public.clinic_hours(clinic_id,doctor_id,weekday,opens_at,closes_at,is_closed)
+          values ('aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000011',extract(dow from (timezone('Asia/Kolkata',now()))::date)::integer,'00:00','23:59',false);
           insert into public.queues(id,clinic_id,doctor_id,service_date,status,token_prefix,next_token_number,walk_in_enabled) values
-            ('aaaaaaaa-0000-4000-8000-000000000111','aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000011',current_date,'open','A',2,true),
-            ('bbbbbbbb-0000-4000-8000-000000000222','bbbbbbbb-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000022',current_date,'open','B',2,true);
+            ('aaaaaaaa-0000-4000-8000-000000000111','aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000011',(timezone('Asia/Kolkata',now()))::date,'open','A',2,true),
+            ('bbbbbbbb-0000-4000-8000-000000000222','bbbbbbbb-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000022',(timezone('Asia/Kolkata',now()))::date,'open','B',2,true);
           insert into public.queue_tokens(id,clinic_id,queue_id,service_date,token_number,display_token,patient_label,patient_phone_hash,status,booking_source) values
             ('aaaaaaaa-0000-4000-8000-000000000111','aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000111',current_date,1,'A1','PRIVATE A','SYNTHETIC-HASH-A','waiting','walk_in'),
             ('bbbbbbbb-0000-4000-8000-000000000222','bbbbbbbb-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000222',current_date,1,'B1','PRIVATE B','SYNTHETIC-HASH-B','waiting','walk_in');
@@ -128,14 +130,24 @@ jobs:
           set local role authenticated;
           set local request.jwt.claim.sub = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
           do $$
-          declare n integer;
+          declare n integer; v_appointment_id uuid;
           begin
             select count(*) into n from public.clinic_memberships;
             if n <> 1 then raise exception 'Tenant isolation failed for clinic memberships: % rows',n; end if;
             select count(*) into n from public.queue_tokens;
             if n <> 1 then raise exception 'Tenant isolation failed for queue tokens: % rows',n; end if;
+            perform * from public.create_staff_appointment(
+              'aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000011',null,
+              'PRIVATE APPOINTMENT A',(timezone('Asia/Kolkata',now()))::date,'12:00'::time,'tenant-appointment-a'
+            );
+            select id into v_appointment_id from public.appointments where clinic_id='aaaaaaaa-0000-4000-8000-000000000001' and idempotency_key='tenant-appointment-a';
+            perform * from public.transition_staff_appointment(v_appointment_id,'confirm');
+            perform * from public.transition_staff_appointment(v_appointment_id,'check_in');
+            perform * from public.transition_staff_appointment(v_appointment_id,'complete');
             select count(*) into n from public.appointments;
-            if n <> 0 then raise exception 'Tenant isolation failed for appointments: % rows',n; end if;
+            if n <> 1 then raise exception 'Tenant isolation failed for appointments: % rows',n; end if;
+            select count(*) into n from public.appointments where patient_name='PRIVATE APPOINTMENT B';
+            if n <> 0 then raise exception 'Cross-clinic appointment became visible'; end if;
             if has_table_privilege(current_user,'public.queue_tokens','INSERT') then raise exception 'Authenticated role can directly insert tokens'; end if;
             begin
               perform * from public.issue_staff_token('bbbbbbbb-0000-4000-8000-000000000222','UNAUTHORIZED','tenant-isolation-test');
