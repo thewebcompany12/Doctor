@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const requestedNext = url.searchParams.get("next") ?? "/workspace";
-  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/workspace";
+  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") && !requestedNext.includes("\\") ? requestedNext : "/workspace";
   if (!code) return NextResponse.redirect(new URL("/login?error=auth_callback", url.origin));
   try {
     const supabase = await createSupabaseServerClient();
