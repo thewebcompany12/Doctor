@@ -6,6 +6,26 @@ import ClinicDirectoryActions from "./clinic-directory-actions";
 
 type ClinicRow = { id: string; clinic_code: string; name: string; address: string | null; city: string | null; state: string | null; phone: string | null; is_active: boolean; is_public: boolean; created_at: string };
 type AuditRow = { id: string; clinic_id: string | null; actor_user_id: string | null; action: string; target_type: string | null; target_id: string | null; metadata: Record<string, unknown>; created_at: string };
+type PlanSettings = { planCode: "starter" | "growth" | "enterprise" | "custom"; maxDoctors: number; maxBranches: number; maxStaff: number; maxDailyTokens: number | null; onlineBookingEnabled: boolean; walkInEnabled: boolean };
+const defaultPlan: PlanSettings = { planCode: "starter", maxDoctors: 3, maxBranches: 1, maxStaff: 10, maxDailyTokens: null, onlineBookingEnabled: false, walkInEnabled: true };
+function parsePlanSettings(value: unknown): PlanSettings {
+  if (!value || typeof value !== "object") return defaultPlan;
+  const settings = value as { subscription?: { planCode?: unknown; limits?: { doctors?: unknown; branches?: unknown; staff?: unknown; dailyTokens?: unknown }; booking?: { online?: unknown; walkIn?: unknown } } };
+  const sub = settings.subscription;
+  if (!sub) return defaultPlan;
+  const code = ["starter","growth","enterprise","custom"].includes(String(sub.planCode)) ? sub.planCode as PlanSettings["planCode"] : "custom";
+  const limits = sub.limits ?? {};
+  const booking = sub.booking ?? {};
+  return {
+    planCode: code,
+    maxDoctors: typeof limits.doctors === "number" && limits.doctors >= 1 ? limits.doctors : defaultPlan.maxDoctors,
+    maxBranches: typeof limits.branches === "number" && limits.branches >= 1 ? limits.branches : defaultPlan.maxBranches,
+    maxStaff: typeof limits.staff === "number" && limits.staff >= 1 ? limits.staff : defaultPlan.maxStaff,
+    maxDailyTokens: typeof limits.dailyTokens === "number" && limits.dailyTokens >= 1 ? limits.dailyTokens : null,
+    onlineBookingEnabled: booking.online === true,
+    walkInEnabled: booking.walkIn !== false
+  };
+}
 
 export default async function PlatformAdminPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   let supabase;
@@ -16,6 +36,8 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
   if (roleError || !isAdmin) redirect("/workspace");
 
   const { q = "" } = await searchParams;
+  const { data: settingsData } = await supabase.from("clinic_settings").select("clinic_id,settings");
+  const planByClinic = new Map<string, PlanSettings>((settingsData ?? []).map(row => [row.clinic_id, parsePlanSettings(row.settings)]));
   const { data: auditData } = await supabase.from("audit_logs").select("id,clinic_id,actor_user_id,action,target_type,target_id,metadata,created_at").order("created_at",{ascending:false}).limit(50);
   const auditRows = (auditData ?? []) as AuditRow[];
   const { data, error } = await supabase.from("clinics")
@@ -42,7 +64,7 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
           <form className="flex gap-2" action="/platform-admin"><input name="q" defaultValue={q} placeholder="Search name, code, city…" aria-label="Search clinics" className="min-w-0 rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm"/><button className="rounded-full bg-[#14231d] px-4 py-2.5 text-sm font-bold text-white">Search</button></form>
         </div>
         {clinics.length === 0 ? <p className="mt-6 rounded-xl border border-dashed border-[#cbd9d0] p-8 text-center text-sm text-[#65736d]">No clinics match this search.</p> :
-          <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="border-b border-[#e1e9e4] text-[#65736d]"><th className="px-3 py-3">Clinic</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Clinic ID</th><th className="px-3 py-3">Created</th><th className="px-3 py-3">Actions</th></tr></thead><tbody>{clinics.map(c=><tr key={c.id} className="border-b border-[#edf1ee]"><td className="px-3 py-4 font-bold">{c.name}</td><td className="px-3 py-4">{[c.city,c.state].filter(Boolean).join(", ") || "—"}</td><td className="px-3 py-4"><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{!c.is_public ? "Archived" : c.is_active ? "Active" : "Suspended"}</span></td><td className="px-3 py-4 font-mono">{c.clinic_code}</td><td className="px-3 py-4">{new Date(c.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</td><td className="px-3 py-4"><ClinicDirectoryActions clinicId={c.id} status={!c.is_public ? "archived" : c.is_active ? "active" : "suspended"} name={c.name} address={c.address} city={c.city} state={c.state} phone={c.phone} /></td></tr>)}</tbody></table></div>}
+          <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="border-b border-[#e1e9e4] text-[#65736d]"><th className="px-3 py-3">Clinic</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Clinic ID</th><th className="px-3 py-3">Created</th><th className="px-3 py-3">Actions</th></tr></thead><tbody>{clinics.map(c=><tr key={c.id} className="border-b border-[#edf1ee]"><td className="px-3 py-4 font-bold">{c.name}</td><td className="px-3 py-4">{[c.city,c.state].filter(Boolean).join(", ") || "—"}</td><td className="px-3 py-4"><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{!c.is_public ? "Archived" : c.is_active ? "Active" : "Suspended"}</span></td><td className="px-3 py-4 font-mono">{c.clinic_code}</td><td className="px-3 py-4">{new Date(c.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</td><td className="px-3 py-4"><ClinicDirectoryActions clinicId={c.id} status={!c.is_public ? "archived" : c.is_active ? "active" : "suspended"} name={c.name} address={c.address} city={c.city} state={c.state} phone={c.phone} planSettings={planByClinic.get(c.id) ?? defaultPlan} /></td></tr>)}</tbody></table></div>}
       </section>
       <section className="mt-8 rounded-2xl border border-[#e1e9e4] bg-white p-6">
         <div><h2 className="text-xl font-black">Administrative action history</h2><p className="mt-1 text-sm text-[#65736d]">Latest 50 recorded platform and clinic actions.</p></div>
