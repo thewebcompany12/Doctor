@@ -11,8 +11,9 @@ type Doctor = { id: string; clinic_id: string; full_name: string; specialty: str
 type ClinicHour = { id: string; clinic_id: string; doctor_id: string | null; weekday: number; opens_at: string | null; closes_at: string | null; is_closed: boolean; doctors: { full_name: string } | null };
 type Queue = { id: string; clinic_id: string; service_date: string; status: string; token_prefix: string; online_booking_enabled: boolean; walk_in_enabled: boolean; max_tokens: number | null; next_token_number: number; doctors: { full_name: string; specialty: string | null } | null };
 type Token = { id: string; queue_id: string; token_number: number; display_token: string; patient_label: string; status: string };
+type QueueEvent = { id: string; clinic_id: string; queue_id: string; event_type: string; previous_status: string | null; new_status: string | null; reason: string | null; created_at: string; queue_tokens: { display_token: string } | null };
 
-export default function QueueDashboard({ clinics, queues, tokens, branches, doctors, hours, actorEmail }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[]; branches: Branch[]; doctors: Doctor[]; hours: ClinicHour[]; actorEmail: string }) {
+export default function QueueDashboard({ clinics, queues, tokens, branches, doctors, hours, events, actorEmail }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[]; branches: Branch[]; doctors: Doctor[]; hours: ClinicHour[]; events: QueueEvent[]; actorEmail: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
@@ -121,6 +122,7 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
     {clinics.map(clinic => {
       const canSetup = ["owner","manager"].includes(clinic.role);
       const clinicQueues = queues.filter(q => q.clinic_id === clinic.id);
+      const clinicEvents = events.filter(e => e.clinic_id === clinic.id).slice(0,30);
       return <section key={clinic.id} className="rounded-2xl border border-[#e1e9e4] bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-black">{clinic.name}</h2><p className="mt-1 text-sm text-[#65736d]">{clinic.clinic_code} · {clinic.role}</p></div><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{clinicQueues.length} queue(s) today</span></div>
         {canSetup && <StaffInviteForm clinicId={clinic.id} clinicName={clinic.name} actorRole={clinic.role} actorEmail={actorEmail} />}
@@ -158,6 +160,9 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
             <button disabled={!!busy} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white">{busy === "set_clinic_hours" ? "Saving…" : "Save schedule"}</button>
           </form>
         </details>}
+        <details className="mt-3 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Recent queue history ({clinicEvents.length})</summary>
+          {clinicEvents.length===0?<p className="mt-3 text-sm text-[#65736d]">No queue events recorded yet.</p>:<div className="mt-3 divide-y divide-[#edf1ee]">{clinicEvents.map(event=><div key={event.id} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm"><div><p className="font-bold">{event.queue_tokens?.display_token ? event.queue_tokens.display_token+" · " : ""}{event.event_type.replaceAll("_"," ")}</p><p className="mt-1 text-xs text-[#65736d]">{event.previous_status ?? "—"} → {event.new_status ?? "—"}{event.reason ? " · "+event.reason : ""}</p></div><time className="text-xs text-[#65736d]">{new Date(event.created_at).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"})}</time></div>)}</div>}
+        </details>
         {canSetup && <details className="mt-5 rounded-xl border border-dashed border-[#cbd9d0] p-4"><summary className="cursor-pointer font-bold">Set up / configure today’s doctor queue</summary>
           <form onSubmit={event => setupQueue(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold">Doctor name<input required name="doctorName" maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
@@ -172,7 +177,7 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
         {clinicQueues.length === 0 ? <p className="mt-5 rounded-xl bg-[#f8faf8] p-5 text-sm text-[#65736d]">No queue configured for today. {canSetup ? "Use the setup panel above to add a doctor and open today’s queue." : "Ask the clinic owner or manager to configure today’s queue."}</p> :
           <div className="mt-5 space-y-5">{clinicQueues.map(queue => {
             const queueTokens = tokens.filter(t => t.queue_id === queue.id);
-            const waiting = queueTokens.filter(t => t.status === "waiting").length;
+            const waiting = queueTokens.filter(t => ["waiting","arrived"].includes(t.status)).length;
             const called = queueTokens.find(t => t.status === "called");
             const current = queueTokens.find(t => t.status === "in_consultation");
             return <article key={queue.id} className="rounded-xl border border-[#e1e9e4] p-4 sm:p-5">
@@ -192,7 +197,7 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
               <div className="mt-5"><h4 className="font-bold">Today’s tokens</h4>{queueTokens.length===0 ? <p className="mt-2 text-sm text-[#65736d]">No tokens issued.</p> : <div className="mt-2 divide-y divide-[#edf1ee]">{queueTokens.map(token=><div key={token.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><div><p className="font-bold">{token.display_token} · {token.patient_label}</p><p className="text-xs capitalize text-[#65736d]">{token.status.replace("_"," ")}</p></div><div className="flex flex-wrap gap-1.5">
                 {token.status==="called" && <><button disabled={!!busy} onClick={()=>transition(token,"call")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Recall</button><button disabled={!!busy} onClick={()=>transition(token,"start")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Start</button></>}
                 {token.status==="in_consultation" && <button disabled={!!busy} onClick={()=>transition(token,"complete")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Complete</button>}
-                {["waiting","called"].includes(token.status) && <><button disabled={!!busy} onClick={()=>transition(token,"skip")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Skip</button><button disabled={!!busy} onClick={()=>transition(token,"absent")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Absent</button><button disabled={!!busy} onClick={()=>transition(token,"cancel")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Cancel</button></>}
+                {token.status==="waiting" && <button disabled={!!busy} onClick={()=>transition(token,"arrive")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Mark arrived</button>}{["waiting","arrived","called"].includes(token.status) && <><button disabled={!!busy} onClick={()=>transition(token,"skip")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Skip</button><button disabled={!!busy} onClick={()=>transition(token,"absent")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Absent</button><button disabled={!!busy} onClick={()=>transition(token,"cancel")} className="rounded-full border px-3 py-1.5 text-xs font-bold">Cancel</button></>}
               </div></div>)}</div>}</div>
             </article>;
           })}</div>}
