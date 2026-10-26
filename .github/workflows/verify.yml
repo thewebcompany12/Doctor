@@ -52,8 +52,8 @@ jobs:
           create schema auth;
           create schema extensions;
           create extension if not exists pgcrypto with schema extensions;
-          grant usage on schema extensions to anon, authenticated, service_role;
-          grant execute on all functions in schema extensions to anon, authenticated, service_role;
+          grant usage on schema extensions to service_role;
+          grant execute on function extensions.digest(bytea,text) to service_role;
           create table auth.users (
             id uuid primary key,
             email text unique,
