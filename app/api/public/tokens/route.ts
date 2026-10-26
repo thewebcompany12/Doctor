@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const {data,error}=await admin.rpc("issue_public_queue_token",{
       p_queue_id:input.queueId,p_patient_label:input.patientName,p_rate_limit_key_hash:rateKey
     });
-    if(error||!data?.length) {
+    if(error||!data||(Array.isArray(data)&&data.length===0)) {
       const message=error?.message ?? "";
       const status=message.includes("rate limit")?429:message.includes("not found")?404:message.includes("disabled")||message.includes("limit")||message.includes("not available")?409:503;
       const safeMessage=status===429?"Too many booking attempts from this network. Try again in 15 minutes.":status===404?"This public queue is not available.":status===409?message:"Online token booking is temporarily unavailable.";
