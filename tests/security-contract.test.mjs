@@ -104,6 +104,15 @@ test("clinic provisioning requires authenticated Super Admin and verified owner 
   assert.match(source, /Cache-Control.*no-store/);
 });
 
+test("doctor edits and branch activation are owner-scoped audited RPCs", async () => {
+  const sql = await file("../supabase/migrations/20261026155849_doctor_and_branch_management.sql");
+  assert.match(sql, /private\.has_clinic_role\(p_clinic_id,array\['owner','manager'\]\)/);
+  assert.match(sql, /Resolve the current patient before deactivating this doctor/);
+  assert.match(sql, /clinic\.doctor_updated/);
+  assert.match(sql, /clinic\.branch_activated/);
+  assert.match(sql, /security invoker set search_path=pg_catalog,public,private/);
+});
+
 test("walk-in issuance enforces both queue and clinic plan controls", async () => {
   const sql = await file("../supabase/migrations/20261026155542_enforce_walkin_plan_gate.sql");
   assert.match(sql, /v_walkin_allowed/);
