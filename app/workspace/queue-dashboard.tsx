@@ -49,6 +49,25 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
     }, "Clinic profile saved.");
   }
 
+  async function updateDoctor(event: FormEvent<HTMLFormElement>, clinic: Clinic, doctor: Doctor) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const active = data.get("isActive") === "on";
+    if (!active && doctor.is_active && !window.confirm("Deactivate " + doctor.full_name + "? Public queue visibility will stop.")) return;
+    await rpc("update_clinic_doctor", {
+      p_clinic_id: clinic.id, p_doctor_id: doctor.id,
+      p_full_name: String(data.get("fullName") ?? "").trim(),
+      p_specialty: String(data.get("specialty") ?? "").trim() || null,
+      p_is_active: active
+    }, "Doctor details saved.");
+  }
+
+  async function toggleBranch(clinic: Clinic, branch: Branch) {
+    const next = !branch.is_active;
+    if (!next && !window.confirm("Deactivate branch " + branch.name + "?")) return;
+    await rpc("set_clinic_branch_active", { p_clinic_id: clinic.id, p_branch_id: branch.id, p_is_active: next }, next ? "Branch activated." : "Branch deactivated.");
+  }
+
   async function createBranch(event: FormEvent<HTMLFormElement>, clinic: Clinic) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -142,7 +161,7 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
           </form>
         </details>}
         {canSetup && <details className="mt-3 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Branches ({branches.filter(b=>b.clinic_id===clinic.id).length})</summary>
-          <div className="mt-3 space-y-2">{branches.filter(b=>b.clinic_id===clinic.id).map(branch=><div key={branch.id} className="flex flex-wrap justify-between gap-2 rounded-lg bg-[#f6f9f7] p-3 text-sm"><span className="font-bold">{branch.name} <span className="font-mono text-xs text-[#65736d]">({branch.branch_code})</span></span><span className="text-[#65736d]">{[branch.city,branch.state].filter(Boolean).join(", ") || "Location not set"} · {branch.is_active ? "Active" : "Inactive"}</span></div>)}</div>
+          <div className="mt-3 space-y-2">{branches.filter(b=>b.clinic_id===clinic.id).map(branch=><div key={branch.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f6f9f7] p-3 text-sm"><div><p className="font-bold">{branch.name} <span className="font-mono text-xs text-[#65736d]">({branch.branch_code})</span></p><p className="text-xs text-[#65736d]">{[branch.city,branch.state].filter(Boolean).join(", ") || "Location not set"} · {branch.is_active ? "Active" : "Inactive"}</p></div><button type="button" disabled={!!busy} onClick={()=>toggleBranch(clinic,branch)} className="rounded-full border border-[#dbe5df] px-3 py-1.5 text-xs font-bold">{branch.is_active?"Deactivate":"Activate"}</button></div>)}</div>
           <form onSubmit={event => createBranch(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold">Branch code<input required name="branchCode" pattern="[A-Za-z0-9-]{2,16}" maxLength={16} placeholder="MAIN-2" className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
             <label className="text-sm font-bold">Branch name<input required name="branchName" maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
@@ -153,6 +172,14 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
             <label className="text-sm font-bold">Phone<input name="branchPhone" maxLength={30} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
             <button disabled={!!busy} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white sm:col-span-2">{busy === "create_clinic_branch" ? "Creating…" : "Create branch"}</button>
           </form>
+        </details>}
+        {canSetup && <details className="mt-3 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Doctors and specialties ({doctors.filter(d=>d.clinic_id===clinic.id).length})</summary>
+          <div className="mt-3 space-y-3">{doctors.filter(d=>d.clinic_id===clinic.id).map(doctor=><form key={doctor.id} onSubmit={event=>updateDoctor(event,clinic,doctor)} className="grid gap-3 rounded-xl bg-[#f6f9f7] p-3 sm:grid-cols-2">
+            <label className="text-sm font-bold">Doctor name<input required name="fullName" defaultValue={doctor.full_name} maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal"/></label>
+            <label className="text-sm font-bold">Specialty<input name="specialty" defaultValue={doctor.specialty ?? ""} maxLength={100} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal"/></label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="isActive" defaultChecked={doctor.is_active}/> Active and publicly listed</label>
+            <button disabled={!!busy} className="rounded-full bg-[#147d55] px-4 py-2 text-sm font-bold text-white">{busy==="update_clinic_doctor"?"Saving…":"Save doctor"}</button>
+          </form>)}</div>
         </details>}
         {canSetup && <details className="mt-3 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Opening hours and doctor schedules</summary>
           <div className="mt-3 space-y-2">{hours.filter(h=>h.clinic_id===clinic.id).sort((a,b)=>a.weekday-b.weekday).map(hour=><div key={hour.id} className="flex flex-wrap justify-between gap-2 rounded-lg bg-[#f6f9f7] p-3 text-sm"><span className="font-bold">{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][hour.weekday]} · {hour.doctors?.full_name ?? "Clinic-wide"}</span><span className="text-[#65736d]">{hour.is_closed ? "Closed" : (hour.opens_at ?? "—").slice(0,5)+"–"+(hour.closes_at ?? "—").slice(0,5)}</span></div>)}</div>
