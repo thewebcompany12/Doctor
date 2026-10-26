@@ -44,11 +44,19 @@ test("public queue snapshot exposes only safe aggregate fields", async () => {
   }
 });
 
-test("anonymous database access is limited to curated queue view", async () => {
-  const sql = await file("../supabase/migrations/20261026151259_public_api_privilege_hardening.sql");
-  assert.match(sql, /revoke all privileges on all tables in schema public from anon/i);
-  assert.match(sql, /grant select on public\.public_queue_status to anon/i);
-  assert.match(sql, /revoke all on function public\.issue_staff_token/i);
+test("public API grants only the safe queue projection to anonymous users", async () => {
+  const sql = await file("../supabase/migrations/20261026153623_least_privilege_table_grants.sql");
+  assert.match(sql, /revoke all privileges on all tables in schema public from anon, authenticated/i);
+  assert.match(sql, /grant select on public\.public_queue_snapshots to anon/i);
+  assert.doesNotMatch(sql, /grant select on public\.(clinics|doctors|queue_tokens|appointments) to anon/i);
+  assert.match(sql, /revoke insert, update, delete, truncate, references, trigger on public\.platform_roles from authenticated/i);
+});
+
+test("authenticated users cannot directly mutate tenant tables or truncate", async () => {
+  const sql = await file("../supabase/migrations/20261026153623_least_privilege_table_grants.sql");
+  for (const table of ["platform_roles","clinics","clinic_memberships","doctors","queues","queue_tokens","queue_events","audit_logs"]) {
+    assert.match(sql, new RegExp("revoke insert, update, delete, truncate, references, trigger on public\\." + table + " from authenticated", "i"));
+  }
 });
 
 test("RLS helpers are private and public wrappers do not elevate privileges", async () => {
