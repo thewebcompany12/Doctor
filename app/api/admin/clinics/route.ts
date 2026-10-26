@@ -47,7 +47,14 @@ export async function POST(request: Request) {
 
   const adminClient = createClient(serviceUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { name, ownerEmail, address, city, state, phone } = parsed.data;
-  const code = clinicCode();
+  let code = "";
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = clinicCode();
+    const { data: existing, error: lookupError } = await adminClient.from("clinics").select("id").eq("clinic_code", candidate).maybeSingle();
+    if (lookupError) return NextResponse.json({ error: "Could not verify Clinic ID uniqueness." }, { status: 503 });
+    if (!existing) { code = candidate; break; }
+  }
+  if (!code) return NextResponse.json({ error: "Could not allocate a unique Clinic ID. Retry the request." }, { status: 503 });
   const tempPassword = temporaryPassword();
 
   const { data: created, error: userError } = await adminClient.auth.admin.createUser({
@@ -82,10 +89,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Owner provisioning failed; created records were rolled back." }, { status: 500 });
   }
 
-  await adminClient.from("audit_logs").insert({
+  const { error: auditError } = await adminClient.from("audit_logs").insert({
     clinic_id: clinic.id, actor_user_id: user.id, action: "clinic.created",
     target_type: "clinic", target_id: clinic.id, metadata: { clinic_code: code, owner_user_id: created.user.id }
   });
+  if (auditError) {
+    await adminClient.from("clinic_memberships").delete().eq("clinic_id", clinic.id);
+    await adminClient.from("clinics").delete().eq("id", clinic.id);
+    await adminClient.auth.admin.deleteUser(created.user.id);
+    return NextResponse.json({ error: "Audit record failed; clinic and owner were rolled back." }, { status: 500 });
+  }
 
   return NextResponse.json({
     clinic: { id: clinic.id, clinicCode: clinic.clinic_code, name: clinic.name },
