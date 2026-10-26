@@ -10,6 +10,7 @@ type HourRow = { id: string; clinic_id: string; doctor_id: string | null; weekda
 type EventRow = { id: string; clinic_id: string; queue_id: string; event_type: string; previous_status: string | null; new_status: string | null; reason: string | null; created_at: string; queue_tokens: { display_token: string } | null };
 type QueueRow = { id: string; clinic_id: string; service_date: string; status: string; token_prefix: string; online_booking_enabled: boolean; walk_in_enabled: boolean; max_tokens: number | null; next_token_number: number; doctors: { full_name: string; specialty: string | null } | null };
 type TokenRow = { id: string; queue_id: string; token_number: number; display_token: string; patient_label: string; status: string };
+type AppointmentRow = { id: string; clinic_id: string; doctor_id: string; branch_id: string | null; patient_name: string; appointment_date: string; appointment_time: string; status: string };
 
 export default async function WorkspacePage() {
   let supabaseClient: Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -42,6 +43,7 @@ export default async function WorkspacePage() {
   const today = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   let queues: QueueRow[] = [];
   let tokens: TokenRow[] = [];
+  let appointments: AppointmentRow[] = [];
   if (clinicIds.length) {
     const { data: queueData } = await supabaseClient.from("queues")
       .select("id,clinic_id,service_date,status,token_prefix,online_booking_enabled,walk_in_enabled,max_tokens,next_token_number,doctors(full_name,specialty)")
@@ -54,6 +56,11 @@ export default async function WorkspacePage() {
         .in("queue_id",queueIds).eq("service_date",today).order("token_number",{ascending:true});
       tokens = (tokenData ?? []) as TokenRow[];
     }
+    const { data: appointmentData } = await supabaseClient.from("appointments")
+      .select("id,clinic_id,doctor_id,branch_id,patient_name,appointment_date,appointment_time,status")
+      .in("clinic_id",clinicIds).gte("appointment_date",today)
+      .order("appointment_date",{ascending:true}).order("appointment_time",{ascending:true}).limit(200);
+    appointments = (appointmentData ?? []) as AppointmentRow[];
   }
 
   return <main className="min-h-screen">
