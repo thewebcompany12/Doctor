@@ -23,6 +23,7 @@ The connected Supabase project reports these applied migration versions:
 17. `20261026153021 public_queue_snapshot_table`
 18. `20261026153114 public_queue_snapshot_backfill`
 19. `20261026153309 tenant_consistency_constraints`
+20. `20261026153600 least_privilege_table_grants`
 20. `20261026153551 private_security_helpers`
 
 The repository now contains version-matched SQL files for this history. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
@@ -39,7 +40,7 @@ The repository now contains version-matched SQL files for this history. The foun
 
 ## Anonymous API surface
 
-The intended public surface is only `public.public_queue_snapshots`, a read-only projection table containing clinic/doctor display fields and aggregate queue counts. A private-schema trigger function maintains it as queue, token, clinic or doctor records change. The projection excludes patient names, phone hashes, tracking secrets and appointment details. Anonymous base-table privileges remain revoked; `anon` can only SELECT the projection. The former definer view and public SECURITY DEFINER RPC were dropped.
+The intended public surface is only `public.public_queue_snapshots`, a read-only projection table containing clinic/doctor display fields and aggregate queue counts. A private-schema trigger function maintains it as queue, token, clinic or doctor records change. The projection excludes patient names, phone hashes, tracking secrets and appointment details. Anonymous base-table privileges remain revoked; `anon` can only SELECT the projection. Authenticated table grants were reset to read-only, with profile preference updates limited to safe columns. Queue state changes must use authorization-checked RPCs, eliminating direct client mutation and `TRUNCATE` grants. The former definer view and public SECURITY DEFINER RPC were dropped.
 
 ## Known scope gaps
 
