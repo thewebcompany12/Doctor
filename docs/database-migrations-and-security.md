@@ -26,6 +26,7 @@ The connected Supabase project reports these applied migration versions:
 20. `20261026153551 private_security_helpers`
 21. `20261026153623 least_privilege_table_grants`
 22. `20261026153807 password_change_flag_auth_trigger`
+23. `20261026154041 secure_rpc_search_paths`
 
 The repository contains version-matched SQL files for the applied history. The baseline was reconstructed from live catalog metadata because the original applied source was absent from GitHub. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
 
@@ -41,7 +42,7 @@ The repository contains version-matched SQL files for the applied history. The b
 
 ## Anonymous API surface
 
-The intended public surface is only `public.public_queue_snapshots`, a read-only projection table containing clinic/doctor display fields and aggregate queue counts. A private-schema trigger function maintains it as queue, token, clinic or doctor records change. The projection excludes patient names, phone hashes, tracking secrets and appointment details. Anonymous base-table privileges remain revoked; `anon` can only SELECT the projection. Authenticated table grants were reset to read-only, with profile preference updates limited to safe columns. Queue state changes must use authorization-checked RPCs, eliminating direct client mutation and `TRUNCATE` grants. The former definer view and public SECURITY DEFINER RPC were dropped.
+The intended public surface is only `public.public_queue_snapshots`, a read-only projection table containing clinic/doctor display fields and aggregate queue counts. A private-schema trigger function maintains it as queue, token, clinic or doctor records change. The projection excludes patient names, phone hashes, tracking secrets and appointment details. Anonymous base-table privileges remain revoked; `anon` can only SELECT the projection. Authenticated table grants were reset to read-only, with profile preference updates limited to safe columns. Queue state changes must use authorization-checked RPCs, eliminating direct client mutation and `TRUNCATE` grants. The former definer view and public SECURITY DEFINER RPC were dropped. Exposed queue RPCs pin `search_path` to `pg_catalog, public, private` and enforce authenticated clinic-role checks.
 
 ## Known scope gaps
 
