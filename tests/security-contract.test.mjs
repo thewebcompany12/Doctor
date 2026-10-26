@@ -4,6 +4,21 @@ import { readFile } from "node:fs/promises";
 
 const file = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
+test("clinic subscription page is server-authorized and exposes Clinic ID and plan controls", async () => {
+  const page = await file("../app/platform-admin/subscriptions/page.tsx");
+  const provisioning = await file("../app/api/admin/clinics/route.ts");
+  const update = await file("../app/api/admin/clinics/[clinicId]/route.ts");
+  assert.match(page, /supabase\.rpc\("is_platform_admin"\)/);
+  assert.match(page, /Clinic ID: \{clinic\.clinic_code\}/);
+  assert.match(page, /ClinicDirectoryActions/);
+  assert.match(page, /ClinicProvisioningForm/);
+  assert.match(provisioning, /function clinicCode\(\)/);
+  assert.match(provisioning, /clinic_code: code/);
+  assert.match(update, /supabase\.rpc\("is_platform_admin"\)/);
+  assert.match(update, /action: z\.literal\("configure"\)/);
+  assert.match(update, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
+});
+
 test("public queue view excludes private patient fields", async () => {
   const sql = await file("../supabase/migrations/20261026144629_public_queue_privacy_view.sql");
   assert.match(sql, /current_display_token/);
