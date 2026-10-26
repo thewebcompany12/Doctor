@@ -13,6 +13,9 @@ The connected Supabase project reports these applied migration versions:
 7. `20261026151630 first_login_password_change`
 8. `20261026151957 queue_operation_guards`
 9. `20261026152016 queue_advance_current_token_guard`
+10. `20261026152153 clinic_queue_setup_and_controls`
+11. `20261026152314 queue_status_audit_fix`
+12. `20261026152346 queue_transition_call_guard`
 
 The repository now contains version-matched SQL files for this history. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
 
@@ -32,4 +35,4 @@ The intended public surface is only `public.public_queue_status`, which returns 
 
 ## Known scope gaps
 
-The current schema does not contain branch or appointment tables. The Super Admin clinic directory now supports search, create/onboard, edit, activate, suspend and archive controls. Temporary-password onboarding is enforced through a first-login password-change page. The current UI is still not a complete production receptionist/owner product. RLS policies have been inspected, but synthetic multi-clinic authenticated/unauthenticated integration tests have not been run. No production data was reset or deleted.
+The current schema does not contain branch or appointment tables. The Super Admin clinic directory now supports search, create/onboard, edit, activate, suspend and archive controls. Temporary-password onboarding is enforced through a first-login password-change page. The workspace now includes owner/manager queue setup and staff queue operations (issue walk-in token, call next, pause/resume/close, start/complete, skip with reason, absent and cancel). Online booking is only a stored setting; public online token issuance is not implemented. The workspace still lacks full clinic profile, schedules, branches, staff invitations and account recovery management. RLS policies have been inspected, but synthetic multi-clinic authenticated/unauthenticated integration tests have not been run. No production data was reset or deleted.
