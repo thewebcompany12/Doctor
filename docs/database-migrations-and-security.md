@@ -48,7 +48,7 @@ The connected Supabase project reports these applied migration versions:
 42. `20261026160937 consolidate_select_policies`
 43. `20261026161405 revoke_legacy_staff_rpc`
 44. `20261026161535 public_online_token_booking`
-45. `20261026161651 public_online_token_booking_reapply`
+45. `20261026161651 public_online_token_booking`
 46. `20261026162152 online_token_secret_function_resolution`
 47. `20261026162244 move_pgcrypto_extension_to_extensions_schema`
 
