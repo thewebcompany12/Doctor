@@ -6,14 +6,14 @@ import Link from "next/link";
 
 type BookingResult = { token: { displayToken: string; tokenNumber: number; expiresAt: string }; trackingSecret: string; notice: string };
 
-export default function OnlineTokenBooking({ queueId, clinicName, doctorName, bookingConfigured }: { queueId: string; clinicName: string; doctorName: string; bookingConfigured: boolean }) {
+export default function OnlineTokenBooking({ queueId, clinicName, doctorName, bookingConfigured, language }: { queueId: string; clinicName: string; doctorName: string; bookingConfigured: boolean; language: "en"|"hi" }) {
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [result,setResult]=useState<BookingResult|null>(null);
   const [copied,setCopied]=useState(false);
   const [trackingUrl,setTrackingUrl]=useState("");
   const [idempotencyKey,setIdempotencyKey]=useState("");
-  useEffect(()=>{if(result)setTrackingUrl(window.location.origin+"/token-status#secret="+result.trackingSecret);else setTrackingUrl("");},[result]);
+  useEffect(()=>{if(result)setTrackingUrl(window.location.origin+"/token-status"+(language==="hi"?"?lang=hi":"")+"#secret="+result.trackingSecret);else setTrackingUrl("");},[result,language]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,24 +48,24 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName, bo
     catch { setCopied(false); }
   }
 
-  if(!bookingConfigured) return <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">Online booking is temporarily unavailable because the clinic booking service has not been configured. Please contact reception for a token.</div>;
+  if(!bookingConfigured) return <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">{language==="hi"?"ऑनलाइन बुकिंग अभी उपलब्ध नहीं है। टोकन के लिए कृपया रिसेप्शन से संपर्क करें।":"Online booking is temporarily unavailable because the clinic booking service has not been configured. Please contact reception for a token."}</div>;
 
   return <details className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-    <summary className="cursor-pointer font-bold text-[#147d55]">Book an online token</summary>
-    <p className="mt-2 text-xs leading-5 text-[#65736d]">{clinicName} · {doctorName}. Your tracking secret is private; save it to check your token later.</p>
+    <summary className="cursor-pointer font-bold text-[#147d55]">{language==="hi"?"ऑनलाइन टोकन बुक करें":"Book an online token"}</summary>
+    <p className="mt-2 text-xs leading-5 text-[#65736d]">{clinicName} · {doctorName}. {language==="hi"?"आपका ट्रैकिंग लिंक निजी है; इसे सुरक्षित रखें।":"Your tracking secret is private; save it to check your token later."}</p>
     {!result && <form onSubmit={submit} className="mt-3 flex flex-col gap-3 sm:flex-row">
-      <label className="min-w-0 flex-1 text-sm font-bold">Patient name<input required name="patientName" minLength={1} maxLength={80} className="mt-1 w-full rounded-lg border border-[#dbe5df] bg-white px-3 py-2 font-normal"/></label>
-      <button disabled={busy} className="self-end rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy?"Booking…":"Get token"}</button>
+      <label className="min-w-0 flex-1 text-sm font-bold">{language==="hi"?"मरीज़ का नाम":"Patient name"}<input required name="patientName" minLength={1} maxLength={80} className="mt-1 w-full rounded-lg border border-[#dbe5df] bg-white px-3 py-2 font-normal"/></label>
+      <button disabled={busy} className="self-end rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy?(language==="hi"?"बुक हो रहा है…":"Booking…"):(language==="hi"?"टोकन लें":"Get token")}</button>
     </form>}
     {error&&<p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {result&&<div className="mt-3 rounded-xl border border-emerald-200 bg-white p-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-[#65736d]">Your token</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-[#65736d]">{language==="hi"?"आपका टोकन":"Your token"}</p>
       <p className="mt-1 text-3xl font-black text-[#147d55]">{result.token.displayToken}</p>
       <p className="mt-2 text-sm">{result.notice}</p>
       <code className="mt-2 block break-all rounded-lg bg-[#f6f9f7] p-3 text-xs">{result.trackingSecret}</code>
-      <button type="button" onClick={copySecret} className="mt-3 rounded-full border border-[#dbe5df] px-4 py-2 text-sm font-bold">{copied?"Tracking secret copied":"Copy tracking secret"}</button>
-      <Link href={trackingUrl||"/token-status"} className="ml-3 inline-block text-sm font-bold text-[#147d55] underline">Open private tracking</Link>
-      <button type="button" onClick={()=>void shareTracking()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white"><Share2 size={15}/>Share on WhatsApp</button>
+      <button type="button" onClick={copySecret} className="mt-3 rounded-full border border-[#dbe5df] px-4 py-2 text-sm font-bold">{copied?(language==="hi"?"ट्रैकिंग सीक्रेट कॉपी हुआ":"Tracking secret copied"):(language==="hi"?"ट्रैकिंग सीक्रेट कॉपी करें":"Copy tracking secret")}</button>
+      <Link href={trackingUrl||"/token-status"} className="ml-3 inline-block text-sm font-bold text-[#147d55] underline">{language==="hi"?"निजी ट्रैकिंग खोलें":"Open private tracking"}</Link>
+      <button type="button" onClick={()=>void shareTracking()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white"><Share2 size={15}/>{language==="hi"?"WhatsApp पर साझा करें":"Share on WhatsApp"}</button>
       <p className="mt-3 text-xs text-[#65736d]">Tracking access expires {new Date(result.token.expiresAt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"})} IST.</p>
       <button type="button" onClick={()=>setResult(null)} className="mt-3 block text-xs font-semibold underline">Close token details</button>
     </div>}
