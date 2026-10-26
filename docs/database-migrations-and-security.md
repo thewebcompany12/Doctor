@@ -46,8 +46,6 @@ The connected Supabase project reports these applied migration versions:
 40. `20261026160729 optimize_auth_rls_initplans`
 41. `20261026160926 staff_membership_rpc_service_role_only`
 42. `20261026160937 consolidate_select_policies`
-41. `20261026160926 staff_membership_rpc_service_role_only`
-42. `20261026160937 consolidate_select_policies`
 
 The repository contains version-matched SQL files for all 42 applied migrations. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. GitHub Actions successfully applied the full migration chain to a clean PostgreSQL 16 database with a minimal Supabase auth/role shim, then passed schema/RLS/grant assertions and synthetic two-clinic authorization checks. This validates migration order and SQL behavior in the CI harness; it is not a substitute for a full Supabase-managed local stack test.
 
