@@ -15,7 +15,5 @@ export async function changeTemporaryPassword(formData: FormData) {
   if (!user) redirect("/login");
   const { error } = await supabase.auth.updateUser({ password });
   if (error) redirect("/change-password?error=update");
-  const { error: clearError } = await supabase.rpc("clear_password_change_flag");
-  if (clearError) redirect("/change-password?error=clear");
   redirect("/workspace");
 }
