@@ -31,6 +31,15 @@ test("queue operations enforce issued-token limits and atomic advancement", asyn
   assert.doesNotMatch(sql, /status not in \('cancelled','absent','skipped'\)/i);
 });
 
+test("public queue RPC is the only anonymous database endpoint", async () => {
+  const sql = await file("../supabase/migrations/20261026152852_public_queue_rpc_privacy_hardening.sql");
+  assert.match(sql, /security definer set search_path=public set row_security=off/i);
+  assert.match(sql, /where c\.is_active and c\.is_public and d\.is_active and d\.is_public/i);
+  assert.match(sql, /revoke all on function public\.get_public_queue_status\(\) from public,authenticated,anon/i);
+  assert.match(sql, /grant execute on function public\.get_public_queue_status\(\) to anon/i);
+  assert.match(sql, /drop view if exists public\.public_queue_status/i);
+});
+
 test("anonymous database access is limited to curated queue view", async () => {
   const sql = await file("../supabase/migrations/20261026151259_public_api_privilege_hardening.sql");
   assert.match(sql, /revoke all privileges on all tables in schema public from anon/i);
