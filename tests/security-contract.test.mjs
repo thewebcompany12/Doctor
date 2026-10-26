@@ -241,3 +241,61 @@ test("public online token booking is rate-limited and keeps tracking credentials
   assert.match(route, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(route, /NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/);
 });
+
+test("patient directory and live queue snapshots expose only intended public fields", async () => {
+  const sql = await file("../supabase/migrations/20261026165621_public_clinic_directory.sql");
+  const patient = await file("../supabase/migrations/20261026165540_patient_experience_foundation.sql");
+  assert.match(sql, /create table if not exists public\.public_clinic_directory/);
+  assert.match(sql, /enable row level security/);
+  assert.match(sql, /clinic_code text primary key/);
+  assert.match(sql, /doctor_names text\[\]/);
+  assert.match(patient, /clinic_city text/);
+  assert.match(patient, /clinic_address text/);
+  assert.match(patient, /public_queue_snapshots/);
+  assert.match(patient, /alter publication supabase_realtime add table public\.public_queue_snapshots/);
+  assert.match(patient, /create trigger public_queue_snapshot_hours/);
+  for (const field of ["patient_label","patient_phone_hash","tracking_secret_hash","auth_secret","p256dh"]) {
+    assert.doesNotMatch(sql, new RegExp("\\\\b"+field+"\\\\b","i"));
+  }
+});
+
+test("private tracking supports expiry checks, rate limiting, position and cancellation", async () => {
+  const api = await file("../app/api/public/tokens/route.ts");
+  const sql = await file("../supabase/migrations/20261026165540_patient_experience_foundation.sql");
+  assert.match(api, /consume_public_tracking_rate_limit/);
+  assert.match(api, /tokensAhead/);
+  assert.match(api, /approximateWaitMinutes/);
+  assert.match(api, /cancel_public_queue_token/);
+  assert.match(sql, /tracking_expires_at>now\\(\\)/);
+  assert.match(sql, /Only waiting tokens can be cancelled online/);
+  assert.match(sql, /revoke all on function public\\.cancel_public_queue_token\\(text\\) from public,anon,authenticated/);
+});
+
+test("push subscriptions remain private and reminder worker requires cron authorization", async () => {
+  const subscribe = await file("../app/api/public/push-subscription/route.ts");
+  const cron = await file("../app/api/cron/push-reminders/route.ts");
+  const sw = await file("../public/sw.js");
+  const sql = await file("../supabase/migrations/20261026165540_patient_experience_foundation.sql");
+  assert.match(subscribe, /safePushEndpoint/);
+  assert.match(subscribe, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(subscribe, /consume_public_tracking_rate_limit/);
+  assert.match(cron, /authorization.*Bearer /i);
+  assert.match(cron, /setVapidDetails/);
+  assert.match(cron, /notification_deliveries/);
+  assert.match(sql, /revoke all on table public\\.push_subscriptions from public, anon, authenticated/);
+  assert.match(sw, /request\\.pathname\\.startsWith\\("\\/api\\/"\\)/);
+  assert.match(sw, /showNotification/);
+});
+
+test("patient queue page uses real safe snapshots and has polling fallback", async () => {
+  const page = await file("../app/queue/[queueId]/page.tsx");
+  const live = await file("../app/queue/[queueId]/live-queue.tsx");
+  const directory = await file("../app/clinics/directory-client.tsx");
+  assert.match(page, /public_queue_snapshots/);
+  assert.match(live, /postgres_changes/);
+  assert.match(live, /setInterval\\(\\(\\)=>\\{if\\(navigator\\.onLine\\) void refresh\\(false\\);\\},15000\\)/);
+  assert.match(live, /Queue data may be stale/);
+  assert.match(directory, /public_clinic_directory/);
+  assert.match(directory, /specialties/);
+  assert.match(directory, /onlineOnly/);
+});
