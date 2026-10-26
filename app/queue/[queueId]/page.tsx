@@ -4,8 +4,9 @@ import LiveQueue, { type LiveQueueSnapshot } from "./live-queue";
 
 export const revalidate = 0;
 
-export default async function PublicQueuePage({ params }: { params: Promise<{ queueId: string }> }) {
+export default async function PublicQueuePage({ params, searchParams }: { params: Promise<{ queueId: string }>; searchParams: Promise<{ lang?: string }> }) {
   const {queueId}=await params;
+  const language=(await searchParams).lang==="hi"?"hi":"en";
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(queueId)) notFound();
   const supabase=createSupabasePublicClient();
   const {data,error}=await supabase.from("public_queue_snapshots")
@@ -13,5 +14,5 @@ export default async function PublicQueuePage({ params }: { params: Promise<{ qu
     .eq("queue_id",queueId).maybeSingle();
   if(error) throw new Error("Queue status is temporarily unavailable.");
   if(!data) notFound();
-  return <LiveQueue initial={data as LiveQueueSnapshot}/>;
+  return <LiveQueue initial={data as LiveQueueSnapshot} initialLanguage={language}/>;
 }
