@@ -27,8 +27,8 @@ test("queue operations enforce issued-token limits and atomic advancement", asyn
   const sql = await file("../supabase/migrations/20261026151957_queue_operation_guards.sql");
   assert.match(sql, /advance_queue/);
   assert.match(sql, /for update skip locked/i);
-  assert.match(sql, /select count\\(\\*\\)::integer into v_count[\\s\\S]*where queue_id = v_queue.id and service_date = v_queue.service_date\\s*;/i);
-  assert.doesNotMatch(sql, /status not in \\('cancelled','absent','skipped'\\)/i);
+  assert.match(sql, /select count\(\*\)::integer into v_count[\s\S]*where queue_id = v_queue.id and service_date = v_queue.service_date\s*;/i);
+  assert.doesNotMatch(sql, /status not in \('cancelled','absent','skipped'\)/i);
 });
 
 test("anonymous database access is limited to curated queue view", async () => {
@@ -50,6 +50,6 @@ test("clinic provisioning requires authenticated Super Admin and verified owner 
 test("first-login password flag can only be cleared by authenticated self-service RPC", async () => {
   const sql = await file("../supabase/migrations/20261026151630_first_login_password_change.sql");
   assert.match(sql, /auth\.uid\(\) is null/i);
-  assert.match(sql, /where id = auth\.uid\(\)/i);
+  assert.match(sql, /where id\s*=\s*auth\.uid\(\)/i);
   assert.match(sql, /revoke all on function public\.clear_password_change_flag\(\) from public, anon/i);
 });
