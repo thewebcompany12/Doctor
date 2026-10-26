@@ -27,7 +27,7 @@ test("queue operations enforce issued-token limits and atomic advancement", asyn
   const sql = await file("../supabase/migrations/20261026151957_queue_operation_guards.sql");
   assert.match(sql, /advance_queue/);
   assert.match(sql, /for update skip locked/i);
-  assert.match(sql, /select count\\(\\*\\)::integer into v_count[\\s\\S]*where queue_id = v_queue.id and service_date = v_queue.service_date;/i);
+  assert.match(sql, /select count\\(\\*\\)::integer into v_count[\\s\\S]*where queue_id = v_queue.id and service_date = v_queue.service_date\\s*;/i);
   assert.doesNotMatch(sql, /status not in \\('cancelled','absent','skipped'\\)/i);
 });
 
