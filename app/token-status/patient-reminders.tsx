@@ -17,6 +17,8 @@ export default function PatientReminders({ trackingSecret, tokenStatus, tokensAh
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
  const [subscription,setSubscription]=useState<PushSubscription|null>(null);
+ const [notifyApproaching,setNotifyApproaching]=useState(true);
+ const [notifyCalled,setNotifyCalled]=useState(true);
  const vapidKey=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
  const lastAlert=useRef("");
  useEffect(()=>{
@@ -24,8 +26,9 @@ export default function PatientReminders({ trackingSecret, tokenStatus, tokensAh
   let key="",title="",body="";
   if(tokenStatus==="called"||tokenStatus==="in_consultation"){key="called";title="It’s your turn";body="The clinic has called your token. Please follow the clinic’s instructions.";}
   else if(tokenStatus==="waiting"&&tokensAhead<=2){key="approaching";title="Your turn is approaching";body="You are getting close to your turn. Waiting time remains an estimate."}
+  if((key==="called"&&!notifyCalled)||(key==="approaching"&&!notifyApproaching))return;
   if(key&&key!==lastAlert.current){lastAlert.current=key;try{new Notification(title,{body,icon:"/icon.svg",tag:"doctor-queue-"+key});}catch{}}
- },[mode,tokenStatus,tokensAhead]);
+ },[mode,tokenStatus,tokensAhead,notifyApproaching,notifyCalled]);
  async function enable() {
   setBusy(true);setMessage("");
   try {
@@ -42,7 +45,7 @@ export default function PatientReminders({ trackingSecret, tokenStatus, tokensAh
     const current=await registration.pushManager.getSubscription();
     const sub=current??await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeVapidKey(vapidKey)});
     const json=sub.toJSON() as PushSubscriptionJson;
-    const response=await fetch("/api/public/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"subscribe",trackingSecret,subscription:json})});
+    const response=await fetch("/api/public/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"subscribe",trackingSecret,subscription:json,preferences:{turnApproaching:notifyApproaching,yourTurn:notifyCalled}})});
     const body=await response.json();
     if(!response.ok)throw new Error(typeof body.error==="string"?body.error:"Background push could not be enabled.");
     setSubscription(sub);setMode("push");setMessage("Background push is enabled on this device. Delivery depends on server scheduling and provider availability.");
@@ -50,6 +53,17 @@ export default function PatientReminders({ trackingSecret, tokenStatus, tokensAh
     setMode("browser");setMessage((e instanceof Error?e.message:"Background push setup failed.")+" Foreground alerts will work only while this page remains open.");
    }
   }catch(e){setMessage(e instanceof Error?e.message:"Could not enable notifications.");}
+  finally{setBusy(false);}
+ }
+ async function savePreferences(){
+  setBusy(true);setMessage("");
+  try{
+   const sub=subscription??await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+   if(!sub)throw new Error("No active push subscription is available on this device.");
+   const response=await fetch("/api/public/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"subscribe",trackingSecret,subscription:sub.toJSON(),preferences:{turnApproaching:notifyApproaching,yourTurn:notifyCalled}})});
+   const body=await response.json();if(!response.ok)throw new Error(typeof body.error==="string"?body.error:"Could not save reminder preferences.");
+   setSubscription(sub);setMode("push");setMessage("Reminder preferences saved for this device.");
+  }catch(e){setMessage(e instanceof Error?e.message:"Could not save reminder preferences.");}
   finally{setBusy(false);}
  }
  async function disable() {
@@ -68,8 +82,13 @@ export default function PatientReminders({ trackingSecret, tokenStatus, tokensAh
  return <section className="mt-5 rounded-2xl border border-[#e1e9e4] bg-white p-5">
   <h3 className="font-extrabold">Turn reminders</h3>
   <p className="mt-2 text-sm leading-6 text-[#65736d]">Notifications are optional. Background delivery needs push keys, a server-side scheduler and an active subscription; foreground alerts only work while this page remains open.</p>
+  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={notifyApproaching} onChange={e=>setNotifyApproaching(e.target.checked)} className="h-4 w-4 accent-[#147d55]"/>Alert when 2 or fewer tokens are ahead</label>
+   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={notifyCalled} onChange={e=>setNotifyCalled(e.target.checked)} className="h-4 w-4 accent-[#147d55]"/>Alert when my token is called</label>
+  </div>
   <div className="mt-3 flex flex-wrap items-center gap-2">
    {mode==="off"||mode==="denied"?<button type="button" disabled={busy} onClick={()=>void enable()} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy?"Enabling…":mode==="denied"?"Try notifications again":"Enable turn reminders"}</button>:<button type="button" disabled={busy} onClick={()=>void disable()} className="rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold disabled:opacity-50">{busy?"Updating…":"Disable reminders"}</button>}
+   {mode==="push"&&<button type="button" disabled={busy} onClick={()=>void savePreferences()} className="rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold disabled:opacity-50">Save preferences</button>}
    <span className="text-xs font-semibold text-[#65736d]">{mode==="push"?"Background push subscribed":mode==="browser"?"Foreground only":mode==="denied"?"Permission denied":"Not enabled"}</span>
   </div>
   {message&&<p role="status" className="mt-3 rounded-lg bg-[#f7faf8] p-3 text-xs leading-5 text-[#53645b]">{message}</p>}
