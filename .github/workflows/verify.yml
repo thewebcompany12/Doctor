@@ -51,9 +51,7 @@ jobs:
           create role service_role nologin bypassrls;
           create schema auth;
           create schema extensions;
-          create extension if not exists pgcrypto with schema extensions;
-          grant usage on schema extensions to service_role;
-          grant execute on function extensions.digest(bytea,text) to service_role;
+          create extension if not exists pgcrypto;
           create table auth.users (
             id uuid primary key,
             email text unique,
@@ -236,6 +234,8 @@ jobs:
         run: |
           set -euo pipefail
           psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
+          grant usage on schema extensions to service_role;
+          grant execute on function extensions.digest(bytea,text) to service_role;
           begin;
           insert into public.clinics(id,clinic_code,name,is_active,is_public)
           values ('dddddddd-0000-4000-8000-000000000001','DQ-ONLINE-TEST','Synthetic Online Clinic',true,true);
