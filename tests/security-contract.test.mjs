@@ -14,7 +14,7 @@ test("clinic subscription page is server-authorized and exposes Clinic ID and pl
   assert.match(page, /ClinicProvisioningForm/);
   assert.match(provisioning, /function clinicCode\(\)/);
   assert.match(provisioning, /clinic_code: code/);
-  assert.match(update, /supabase\.rpc\("is_platform_admin"\)/);
+  assert.match(update, /session\.rpc\("is_platform_admin"\)/);
   assert.match(update, /action: z\.literal\("configure"\)/);
   assert.match(update, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
 });
