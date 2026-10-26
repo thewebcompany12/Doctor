@@ -28,7 +28,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 - The connected Supabase project has no Auth users, no Super Admin role and no clinic rows. The first Super Admin must be provisioned through the documented operator-controlled procedure in `docs/first-admin.md`; this must not be automated without a verified identity.
 - Add the production callback URL to Supabase Auth's redirect allow-list for password recovery.
 - After Vercel's deployment quota resets (or the owner resolves the plan/quota limit), deploy the current `main` commit and rerun the live checks.
-- Public online token issuance is not implemented; online booking remains disabled by default and its setting is plan-gated.
+- Public online token issuance is implemented as a service-role-only RPC with hashed, expiring tracking secrets, per-key rate limiting and queue/plan gates. Online booking remains disabled by default.
 - CI has passed a synthetic 20-request concurrent token-allocation/idempotency test. Production-scale load testing and a full real-browser end-to-end run with real authorized test accounts remain outstanding.
 
 Do not treat the platform as production-ready for real patient traffic until the owner has configured the missing secret, provisioned a verified Super Admin, completed the Auth redirect allow-list setup, and run end-to-end workflows with authorized test accounts.
