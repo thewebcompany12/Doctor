@@ -11,6 +11,8 @@ The connected Supabase project reports these applied migration versions:
 5. `20261026145147 queue_mutation_security_hardening`
 6. `20261026151259 public_api_privilege_hardening`
 7. `20261026151630 first_login_password_change`
+8. `20261026151957 queue_operation_guards`
+9. `20261026152016 queue_advance_current_token_guard`
 
 The repository now contains version-matched SQL files for this history. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
 
@@ -22,7 +24,7 @@ The repository now contains version-matched SQL files for this history. The foun
 - Compare the resulting schema, functions, policies, indexes and grants against production before applying any reconciliation.
 - Keep migration filenames aligned with the versions recorded in `supabase_migrations.schema_migrations`.
 - If production was changed outside versioned migrations, add a forward-only reconciliation migration; do not rewrite historical production state.
-- Queue allocation must go through `issue_staff_token`; transitions must go through `transition_queue_token`. The functions lock queue/token rows and accept idempotency keys. A clean-install concurrency test remains outstanding.
+- Queue allocation must go through `issue_staff_token`; transitions must go through `transition_queue_token`; next-patient selection uses `advance_queue`. These functions check clinic membership, lock rows and accept idempotency keys. Daily token limits count all issued tokens, including skipped/absent/cancelled tokens. A clean-install concurrency test remains outstanding.
 
 ## Anonymous API surface
 
