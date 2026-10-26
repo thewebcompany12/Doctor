@@ -118,6 +118,37 @@ test("appointment audit records preserve the previous status", async () => {
   assert.match(sql, /'previous_status',v_previous/);
 });
 
+test("arrival state, queue lock ordering, and public waiting counts stay consistent", async () => {
+  const sql = await file("../supabase/migrations/20261026154932_arrived_token_status_and_lock_order.sql");
+  assert.match(sql, /'waiting','arrived','called','in_consultation'/);
+  assert.match(sql, /when 'arrive' then/i);
+  assert.match(sql, /status in \('waiting','arrived'\)/i);
+  assert.match(sql, /status in \('waiting','arrived'\);/i);
+  assert.ok(sql.indexOf("from public.queues where id=v_queue_id for update") < sql.indexOf("from public.queue_tokens where id=p_token_id and queue_id=v_queue.id for update"));
+  assert.match(sql, /private\.refresh_public_queue_snapshot/);
+});
+
+test("clinic plan limits are checked by server-side queue and branch operations", async () => {
+  const sql = await file("../supabase/migrations/20261026154447_enforce_clinic_plan_limits.sql");
+  assert.match(sql, /private\.enforce_clinic_usage_limit/);
+  assert.match(sql, /'doctors'/);
+  assert.match(sql, /'branches'/);
+  assert.match(sql, /'dailyTokens'/);
+  assert.match(sql, /Queue daily token limit reached|Daily token limit reached/);
+});
+
+test("staff invitations use an atomic role-checked membership operation", async () => {
+  const sql = await file("../supabase/migrations/20261026155112_atomic_staff_invitation_membership_fix.sql");
+  assert.match(sql, /select \* into v_clinic from public\.clinics where id=p_clinic_id and is_active for update/i);
+  assert.match(sql, /v_actor_role='manager' and p_role='manager'/);
+  assert.match(sql, /private\.enforce_clinic_usage_limit\(p_clinic_id,'staff',v_count\)/);
+  assert.match(sql, /clinic\.staff_invited/);
+  const route = await file("../app/api/clinic/staff/route.ts");
+  assert.match(route, /auth\.admin\.inviteUserByEmail/);
+  assert.match(route, /rpc\("attach_invited_staff"/);
+  assert.match(route, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
+});
+
 test("temporary-password flag clears only after an actual password hash change", async () => {
   const sql = await file("../supabase/migrations/20261026153807_password_change_flag_auth_trigger.sql");
   assert.match(sql, /new\.encrypted_password is distinct from old\.encrypted_password/i);
