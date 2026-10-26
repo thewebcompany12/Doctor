@@ -7,7 +7,7 @@ export default function TokenStatusPage() {
     <section className="container max-w-3xl py-12 md:py-16">
       <p className="eyebrow">Private token lookup</p><h1 className="mt-3 text-3xl font-black tracking-tight">Check your queue status</h1>
       <p className="mt-3 max-w-2xl leading-7 text-[#65736d]">Only someone with the tracking secret can view token status. The lookup never reveals a patient&apos;s name or phone number.</p>
-      <TokenStatusLookup />
+      <TokenStatusLookup trackingConfigured={Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)} />
     </section>
   </main>;
 }
