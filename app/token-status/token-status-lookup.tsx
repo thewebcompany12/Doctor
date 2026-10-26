@@ -42,7 +42,7 @@ export default function TokenStatusLookup() {
 
   useEffect(()=>{
     setOnline(navigator.onLine);
-    const onlineHandler=()=>{setOnline(true);if(trackingSecret)void fetchStatus(trackingSecret,true);};
+    const onlineHandler=()=>setOnline(true);
     const offlineHandler=()=>setOnline(false);
     const clock=window.setInterval(()=>setTick(Date.now()),5000);
     window.addEventListener("online",onlineHandler);window.addEventListener("offline",offlineHandler);
