@@ -23,7 +23,7 @@ export default function AppointmentPanel({ clinic, doctors, branches, appointmen
     setBusy(true); setMessage(""); setError("");
     try {
       const supabase = createSupabaseBrowserClient();
-      const { data, error: rpcError } = await supabase.rpc(name,args as never);
+      const { error: rpcError } = await supabase.rpc(name,args as never);
       if (rpcError) { setError(rpcError.message); return false; }
       setMessage(success); router.refresh(); return true;
     } catch (e) {
