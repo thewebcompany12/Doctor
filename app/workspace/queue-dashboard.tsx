@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import StaffInviteForm from "./staff-invite-form";
 
 type Clinic = { id: string; name: string; clinic_code: string; role: string; address: string | null; city: string | null; state: string | null; phone: string | null };
 type Branch = { id: string; clinic_id: string; branch_code: string; name: string; city: string | null; state: string | null; is_active: boolean };
@@ -122,6 +123,7 @@ export default function QueueDashboard({ clinics, queues, tokens, branches, doct
       const clinicQueues = queues.filter(q => q.clinic_id === clinic.id);
       return <section key={clinic.id} className="rounded-2xl border border-[#e1e9e4] bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-black">{clinic.name}</h2><p className="mt-1 text-sm text-[#65736d]">{clinic.clinic_code} · {clinic.role}</p></div><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{clinicQueues.length} queue(s) today</span></div>
+        {canSetup && <StaffInviteForm clinicId={clinic.id} clinicName={clinic.name} actorRole={clinic.role} />}
         {canSetup && <details className="mt-4 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Clinic profile and contact</summary>
           <form onSubmit={event => updateProfile(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold">Clinic name<input required name="name" defaultValue={clinic.name} maxLength={120} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
