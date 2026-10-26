@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 const inputSchema = z.object({
   name: z.string().trim().min(2).max(120),
   ownerEmail: z.email().max(254),
+  ownerEmailVerified: z.literal(true),
   address: z.string().trim().max(240).optional(),
   city: z.string().trim().max(100).optional(),
   state: z.string().trim().max(100).optional(),
@@ -18,6 +19,12 @@ function clinicCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = crypto.getRandomValues(new Uint8Array(8));
   return "DQ-" + Array.from(bytes, b => chars[b % chars.length]).join("");
+}
+
+function temporaryPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*-";
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, b => chars[b % chars.length]).join("");
 }
 
 export async function POST(request: Request) {
@@ -36,16 +43,17 @@ export async function POST(request: Request) {
   if (!serviceUrl || !serviceKey) return NextResponse.json({ error: "Server-side clinic provisioning is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment." }, { status: 503 });
 
   const parsed = inputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Invalid clinic details.", details: parsed.error.flatten() }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Invalid clinic details. Verify the owner email in person before provisioning.", details: parsed.error.flatten() }, { status: 400 });
 
   const adminClient = createClient(serviceUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { name, ownerEmail, address, city, state, phone } = parsed.data;
   const code = clinicCode();
-  const temporaryPassword = Array.from(crypto.getRandomValues(new Uint8Array(24)), b => "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*-"[b % 67]).join("");
+  const tempPassword = temporaryPassword();
+
   const { data: created, error: userError } = await adminClient.auth.admin.createUser({
     email: ownerEmail,
-    password: temporaryPassword,
-    email_confirm: false,
+    password: tempPassword,
+    email_confirm: true,
     user_metadata: { display_name: name + " clinic owner", must_change_password: true }
   });
   if (userError || !created.user) return NextResponse.json({ error: "Could not create owner account. Verify the email and Auth configuration." }, { status: 409 });
@@ -82,7 +90,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     clinic: { id: clinic.id, clinicCode: clinic.clinic_code, name: clinic.name },
     ownerEmail,
-    temporaryPassword,
-    notice: "Show this temporary password once, transmit it securely, and require the owner to change it immediately."
+    temporaryPassword: tempPassword,
+    notice: "Email confirmation was skipped only because the authenticated Super Admin attested that the owner email was verified. Deliver this one-time password securely and require an immediate password change."
   }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
