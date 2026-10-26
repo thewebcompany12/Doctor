@@ -11,7 +11,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 - Supabase schema for clinics, memberships, doctors, branches, opening hours, queues, tokens, appointments, queue events, audit history, notifications and plan settings.
 - Atomic/idempotent queue operations, clinic-wide daily token limits with clinic-row serialization, appointment slot uniqueness, composite tenant foreign keys, least-privilege table grants and private-schema security-definer implementations behind invoker RPC wrappers.
 - Public queue status is served from a read-only aggregate projection table; it does not expose patient names, phone hashes or appointment details.
-- Version-matched source files for all 42 migrations applied to the connected Supabase project.
+- Version-matched source files for all 43 migrations applied to the connected Supabase project.
 
 ## Verification completed
 
