@@ -194,7 +194,7 @@ test("temporary-password flag clears only after an actual password hash change",
 
 
 test("staff membership attachment cannot be invoked directly by clinic users", async () => {
-  const sql = await file("../supabase/migrations/20261026160900_staff_membership_rpc_service_role_only.sql");
+  const sql = await file("../supabase/migrations/20261026160926_staff_membership_rpc_service_role_only.sql");
   assert.match(sql, /revoke all on function public\.attach_invited_staff\(uuid,uuid,text,text,uuid\) from public,anon,authenticated/i);
   assert.match(sql, /grant execute on function public\.attach_invited_staff\(uuid,uuid,text,text,uuid\) to service_role/i);
   assert.match(sql, /revoke all on function private\.attach_invited_staff\(uuid,uuid,text,text,uuid\) from public,anon,authenticated/i);
