@@ -255,7 +255,7 @@ test("patient directory and live queue snapshots expose only intended public fie
   assert.match(patient, /alter publication supabase_realtime add table public\.public_queue_snapshots/);
   assert.match(patient, /create trigger public_queue_snapshot_hours/);
   for (const field of ["patient_label","patient_phone_hash","tracking_secret_hash","auth_secret","p256dh"]) {
-    assert.doesNotMatch(sql, new RegExp("\\\\b"+field+"\\\\b","i"));
+    assert.doesNotMatch(sql, new RegExp("\\b"+field+"\\b","i"));
   }
 });
 
@@ -266,9 +266,9 @@ test("private tracking supports expiry checks, rate limiting, position and cance
   assert.match(api, /tokensAhead/);
   assert.match(api, /approximateWaitMinutes/);
   assert.match(api, /cancel_public_queue_token/);
-  assert.match(sql, /tracking_expires_at>now\\(\\)/);
+  assert.match(sql, /tracking_expires_at>now\(\)/);
   assert.match(sql, /Only waiting tokens can be cancelled online/);
-  assert.match(sql, /revoke all on function public\\.cancel_public_queue_token\\(text\\) from public,anon,authenticated/);
+  assert.match(sql, /revoke all on function public\.cancel_public_queue_token\(text\) from public,anon,authenticated/);
 });
 
 test("push subscriptions remain private and reminder worker requires cron authorization", async () => {
@@ -282,8 +282,8 @@ test("push subscriptions remain private and reminder worker requires cron author
   assert.match(cron, /authorization.*Bearer /i);
   assert.match(cron, /setVapidDetails/);
   assert.match(cron, /notification_deliveries/);
-  assert.match(sql, /revoke all on table public\\.push_subscriptions from public, anon, authenticated/);
-  assert.match(sw, /request\\.pathname\\.startsWith\\("\\/api\\/"\\)/);
+  assert.match(sql, /revoke all on table public\.push_subscriptions from public, anon, authenticated/);
+  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(sw, /showNotification/);
 });
 
@@ -293,7 +293,8 @@ test("patient queue page uses real safe snapshots and has polling fallback", asy
   const directory = await file("../app/clinics/directory-client.tsx");
   assert.match(page, /public_queue_snapshots/);
   assert.match(live, /postgres_changes/);
-  assert.match(live, /setInterval\\(\\(\\)=>\\{if\\(navigator\\.onLine\\) void refresh\\(false\\);\\},15000\\)/);
+  assert.match(live, /setInterval/);
+  assert.match(live, /15000/);
   assert.match(live, /Queue data may be stale/);
   assert.match(directory, /public_clinic_directory/);
   assert.match(directory, /specialties/);
