@@ -201,4 +201,6 @@ test("staff membership attachment cannot be invoked directly by clinic users", a
   const route = await file("../app/api/clinic/staff/route.ts");
   assert.match(route, /admin\.rpc\("attach_invited_staff"/);
   assert.match(route, /p_actor_user_id: user\.id/);
+  const legacy = await file("../supabase/migrations/20261026161405_revoke_legacy_staff_rpc.sql");
+  assert.match(legacy, /revoke all on function private\.attach_invited_staff\(uuid,uuid,text,text\) from public,anon,authenticated,service_role/i);
 });
