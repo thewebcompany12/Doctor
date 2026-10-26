@@ -60,7 +60,7 @@ export default function TokenStatusLookup() {
     if(!result||!trackingSecret)return;
     const poll=window.setInterval(()=>{if(navigator.onLine)void fetchStatus(trackingSecret,true);},20000);
     return ()=>window.clearInterval(poll);
-  },[result?.token.displayToken,trackingSecret,fetchStatus]);
+  },[result,trackingSecret,fetchStatus]);
 
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();await fetchStatus(trackingSecret,false);
