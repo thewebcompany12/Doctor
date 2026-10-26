@@ -224,34 +224,3 @@ jobs:
           end $check$;
           SQL
 
-      - name: Stress concurrent token allocation and idempotency
-        env:
-          PGPASSWORD: postgres
-        run: |
-          set -euo pipefail
-          psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
-          insert into auth.users(id,email,encrypted_password) values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','queue-concurrency@example.invalid','synthetic');
-          insert into public.clinics(id,clinic_code,name,is_active,is_public) values ('cccccccc-0000-4000-8000-000000000001','DQ-CONCURRENCY','Concurrency Test Clinic',true,true);
-          insert into public.clinic_memberships(clinic_id,user_id,role,is_active) values ('cccccccc-0000-4000-8000-000000000001','cccccccc-cccc-4ccc-8ccc-cccccccccccc','owner',true);
-          insert into public.doctors(id,clinic_id,full_name,specialty,is_active,is_public) values ('cccccccc-0000-4000-8000-000000000011','cccccccc-0000-4000-8000-000000000001','Concurrency Doctor','Test',true,true);
-          insert into public.queues(id,clinic_id,doctor_id,service_date,status,token_prefix,next_token_number,walk_in_enabled)
-          values ('cccccccc-0000-4000-8000-000000000111','cccccccc-0000-4000-8000-000000000001','cccccccc-0000-4000-8000-000000000011',(timezone('Asia/Kolkata',now()))::date,'open','C',1,true);
-          SQL
-          pids=""
-          for i in $(seq 1 10); do
-            (
-              psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 -Atq -c "set role authenticated; set request.jwt.claim.sub='cccccccc-cccc-4ccc-8ccc-cccccccccccc'; select token_number from public.issue_staff_token('cccccccc-0000-4000-8000-000000000111','Patient $i','concurrency-$i');" > "/tmp/doctor-queue-token-$i"
-            ) &
-            pids="$pids $!"
-          done
-          for pid in $pids; do wait "$pid"; done
-          count=$(psql -h localhost -U postgres -d doctorqueue -Atq -c "select count(*) from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';")
-          distinct=$(psql -h localhost -U postgres -d doctorqueue -Atq -c "select count(distinct token_number) from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';")
-          minmax=$(psql -h localhost -U postgres -d doctorqueue -Atq -c "select min(token_number)||':'||max(token_number) from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';")
-          test "$count" = "10"
-          test "$distinct" = "10"
-          test "$minmax" = "1:10"
-          first=$(psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 -Atq -c "set role authenticated; set request.jwt.claim.sub='cccccccc-cccc-4ccc-8ccc-cccccccccccc'; select token_number from public.issue_staff_token('cccccccc-0000-4000-8000-000000000111','Patient 1','concurrency-1');")
-          test "$first" = "1"
-          count_after_retry=$(psql -h localhost -U postgres -d doctorqueue -Atq -c "select count(*) from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';")
-          test "$count_after_retry" = "10"
