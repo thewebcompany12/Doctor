@@ -246,13 +246,16 @@ jobs:
           values ('dddddddd-0000-4000-8000-000000000011','dddddddd-0000-4000-8000-000000000001','Synthetic Online Doctor','Test',true,true);
           insert into public.queues(id,clinic_id,doctor_id,service_date,status,token_prefix,next_token_number,online_booking_enabled,walk_in_enabled,max_tokens)
           values ('dddddddd-0000-4000-8000-000000000111','dddddddd-0000-4000-8000-000000000001','dddddddd-0000-4000-8000-000000000011',(timezone('Asia/Kolkata',now()))::date,'open','O',1,true,true,50);
+          insert into public.clinic_hours(clinic_id,doctor_id,weekday,opens_at,closes_at,is_closed)
+          values ('dddddddd-0000-4000-8000-000000000001','dddddddd-0000-4000-8000-000000000011',extract(dow from (timezone('Asia/Kolkata',now()))::date)::integer,'00:00','23:59:59',false);
           insert into public.clinic_settings(clinic_id,settings)
           values ('dddddddd-0000-4000-8000-000000000001','{"subscription":{"booking":{"online":true,"walkIn":true},"limits":{"dailyTokens":50}}}'::jsonb)
           on conflict (clinic_id) do update set settings=excluded.settings;
           do $check$
-          declare v_token record; n integer; v_secret_hash text; i integer;
+          declare v_token record; v_retry record; n integer; v_secret_hash text; i integer; v_key text;
           begin
-            select * into v_token from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Synthetic online patient',repeat('a',64));
+            v_key:='dddddddd-0000-4000-8000-000000000001';
+            select * into v_token from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Synthetic online patient',repeat('a',64),v_key);
             v_secret_hash:=encode(extensions.digest(convert_to(v_token.tracking_secret,'UTF8'),'sha256'),'hex');
             if not exists(select 1 from public.queue_tokens where id=v_token.token_id and tracking_secret_hash=v_secret_hash and tracking_secret_hash<>v_token.tracking_secret and booking_source='online' and tracking_expires_at>now()) then
               raise exception 'Online booking did not persist a hashed, expiring tracking secret';
@@ -260,17 +263,21 @@ jobs:
             if exists(select 1 from public.public_queue_snapshots s where s.queue_id='dddddddd-0000-4000-8000-000000000111' and (to_jsonb(s) ? 'patient_label' or to_jsonb(s) ? 'tracking_secret_hash')) then
               raise exception 'Public queue snapshot exposed private token details';
             end if;
+            select * into v_retry from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Synthetic online patient',repeat('c',64),v_key);
+            if v_retry.token_id is distinct from v_token.token_id or v_retry.tracking_secret=v_token.tracking_secret then
+              raise exception 'Repeated online booking did not reuse the token and rotate its private secret';
+            end if;
             for i in 2..8 loop
-              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Synthetic online patient',repeat('a',64));
+              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Synthetic online patient',repeat('a',64),format('dddddddd-0000-4000-8000-%s',lpad(i::text,12,'0')));
             end loop;
             begin
-              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Rate limited patient',repeat('a',64));
+              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Rate limited patient',repeat('a',64),'dddddddd-0000-4000-8000-000000000009');
               raise exception 'Online booking rate limit was not enforced';
             exception when sqlstate '54000' then null;
             end;
             update public.clinic_settings set settings=jsonb_set(settings,'{subscription,booking,online}','false'::jsonb) where clinic_id='dddddddd-0000-4000-8000-000000000001';
             begin
-              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Plan disabled patient',repeat('b',64));
+              perform * from public.issue_public_queue_token('dddddddd-0000-4000-8000-000000000111','Plan disabled patient',repeat('b',64),'dddddddd-0000-4000-8000-000000000010');
               raise exception 'Online booking ignored the clinic plan gate';
             exception when sqlstate '55000' then null;
             end;
