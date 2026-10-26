@@ -98,3 +98,63 @@ jobs:
             if to_regprocedure('public.has_clinic_role(uuid,text[])') is not null then raise exception 'RLS helper remains exposed in public schema'; end if;
           end $$;
           SQL
+
+      - name: Test tenant isolation and anonymous privacy with synthetic rows
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          insert into auth.users(id,email,encrypted_password) values
+            ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','tenant-a@example.invalid','synthetic-a'),
+            ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','tenant-b@example.invalid','synthetic-b');
+          insert into public.clinics(id,clinic_code,name,is_active,is_public) values
+            ('aaaaaaaa-0000-4000-8000-000000000001','DQ-TEST-A','Synthetic Clinic A',true,true),
+            ('bbbbbbbb-0000-4000-8000-000000000002','DQ-TEST-B','Synthetic Clinic B',true,true);
+          insert into public.clinic_memberships(clinic_id,user_id,role,is_active) values
+            ('aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','owner',true),
+            ('bbbbbbbb-0000-4000-8000-000000000002','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','owner',true);
+          insert into public.doctors(id,clinic_id,full_name,specialty,is_active,is_public) values
+            ('aaaaaaaa-0000-4000-8000-000000000011','aaaaaaaa-0000-4000-8000-000000000001','Synthetic Doctor A','Test',true,true),
+            ('bbbbbbbb-0000-4000-8000-000000000022','bbbbbbbb-0000-4000-8000-000000000002','Synthetic Doctor B','Test',true,true);
+          insert into public.queues(id,clinic_id,doctor_id,service_date,status,token_prefix,next_token_number,walk_in_enabled) values
+            ('aaaaaaaa-0000-4000-8000-000000000111','aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000011',current_date,'open','A',2,true),
+            ('bbbbbbbb-0000-4000-8000-000000000222','bbbbbbbb-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000022',current_date,'open','B',2,true);
+          insert into public.queue_tokens(id,clinic_id,queue_id,service_date,token_number,display_token,patient_label,patient_phone_hash,status,booking_source) values
+            ('aaaaaaaa-0000-4000-8000-000000000111','aaaaaaaa-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000111',current_date,1,'A1','PRIVATE A','SYNTHETIC-HASH-A','waiting','walk_in'),
+            ('bbbbbbbb-0000-4000-8000-000000000222','bbbbbbbb-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000222',current_date,1,'B1','PRIVATE B','SYNTHETIC-HASH-B','waiting','walk_in');
+          insert into public.appointments(clinic_id,doctor_id,patient_user_id,patient_name,patient_phone_hash,appointment_date,appointment_time,created_by)
+          values ('bbbbbbbb-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000022','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','PRIVATE APPOINTMENT B','SYNTHETIC-HASH-B',current_date,'12:00','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+          set local role authenticated;
+          set local request.jwt.claim.sub = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+          do $$
+          declare n integer;
+          begin
+            select count(*) into n from public.clinic_memberships;
+            if n <> 1 then raise exception 'Tenant isolation failed for clinic memberships: % rows',n; end if;
+            select count(*) into n from public.queue_tokens;
+            if n <> 1 then raise exception 'Tenant isolation failed for queue tokens: % rows',n; end if;
+            select count(*) into n from public.appointments;
+            if n <> 0 then raise exception 'Tenant isolation failed for appointments: % rows',n; end if;
+            if has_table_privilege(current_user,'public.queue_tokens','INSERT') then raise exception 'Authenticated role can directly insert tokens'; end if;
+            begin
+              perform * from public.issue_staff_token('bbbbbbbb-0000-4000-8000-000000000222','UNAUTHORIZED','tenant-isolation-test');
+              raise exception 'Cross-clinic token issuance was accepted';
+            exception when insufficient_privilege then null;
+            end;
+          end $$;
+          reset role;
+          set local role anon;
+          do $$
+          declare n integer;
+          begin
+            select count(*) into n from public.public_queue_snapshots where queue_id in
+              ('aaaaaaaa-0000-4000-8000-000000000111','bbbbbbbb-0000-4000-8000-000000000222');
+            if n <> 2 then raise exception 'Public queue snapshot should show only safe aggregate rows, found %',n; end if;
+            if exists (select 1 from public.public_queue_snapshots s where to_jsonb(s) ? 'patient_label' or to_jsonb(s) ? 'patient_phone_hash') then
+              raise exception 'Public snapshot exposes private patient fields';
+            end if;
+          end $$;
+          reset role;
+          rollback;
+          SQL
