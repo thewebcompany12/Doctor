@@ -48,7 +48,9 @@ The connected Supabase project reports these applied migration versions:
 42. `20261026160937 consolidate_select_policies`
 43. `20261026161405 revoke_legacy_staff_rpc`
 44. `20261026161535 public_online_token_booking`
-45. `20261026161651 public_online_token_booking`
+45. `20261026161651 public_online_token_booking_reapply`
+46. `20261026162152 online_token_secret_function_resolution`
+47. `20261026162244 move_pgcrypto_extension_to_extensions_schema`
 
 The repository contains version-matched SQL files for all 45 applied migrations. The online-token migration was accidentally applied twice through the connected migration tool; it is idempotent (`IF NOT EXISTS`/`CREATE OR REPLACE`) and both recorded versions are retained and represented by matching files so clean-install migration order remains reproducible. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. GitHub Actions successfully applied the full migration chain to a clean PostgreSQL 16 database with a minimal Supabase auth/role shim, then passed schema/RLS/grant assertions and synthetic two-clinic authorization checks. This validates migration order and SQL behavior in the CI harness; it is not a substitute for a full Supabase-managed local stack test.
 
@@ -60,7 +62,7 @@ The repository contains version-matched SQL files for all 45 applied migrations.
 - Compare the resulting schema, functions, policies, indexes and grants against production before applying any reconciliation.
 - Keep migration filenames aligned with the versions recorded in `supabase_migrations.schema_migrations`.
 - If production was changed outside versioned migrations, add a forward-only reconciliation migration; do not rewrite historical production state.
-- Queue allocation must go through `issue_staff_token`; transitions must go through `transition_queue_token`; next-patient selection uses `advance_queue`. These functions check clinic membership, lock rows and accept idempotency keys. Daily token limits count all issued tokens, including skipped/absent/cancelled tokens. A parallel-load concurrency stress test remains outstanding; queue and clinic rows are locked in a consistent order, and idempotency and status guards are covered by migration contracts and the queue RPC implementation.
+- Queue allocation must go through `issue_staff_token`; transitions must go through `transition_queue_token`; next-patient selection uses `advance_queue`. These functions check clinic membership, lock rows and accept idempotency keys. Daily token limits count all issued tokens, including skipped/absent/cancelled tokens. GitHub Actions now stress-tests 20 concurrent token issuances and verifies distinct sequential numbers plus idempotent retry behavior.
 
 ## Anonymous API surface
 
