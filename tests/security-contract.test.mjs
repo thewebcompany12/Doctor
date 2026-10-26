@@ -31,13 +31,17 @@ test("queue operations enforce issued-token limits and atomic advancement", asyn
   assert.doesNotMatch(sql, /status not in \('cancelled','absent','skipped'\)/i);
 });
 
-test("public queue RPC is the only anonymous database endpoint", async () => {
-  const sql = await file("../supabase/migrations/20261026152852_public_queue_rpc_privacy_hardening.sql");
-  assert.match(sql, /security definer set search_path=public set row_security=off/i);
-  assert.match(sql, /where c\.is_active and c\.is_public and d\.is_active and d\.is_public/i);
-  assert.match(sql, /revoke all on function public\.get_public_queue_status\(\) from public,authenticated,anon/i);
-  assert.match(sql, /grant execute on function public\.get_public_queue_status\(\) to anon/i);
-  assert.match(sql, /drop view if exists public\.public_queue_status/i);
+test("public queue snapshot exposes only safe aggregate fields", async () => {
+  const sql = await file("../supabase/migrations/20261026153021_public_queue_snapshot_table.sql");
+  assert.match(sql, /create table if not exists public\.public_queue_snapshots/i);
+  assert.match(sql, /alter table public\.public_queue_snapshots enable row level security/i);
+  assert.match(sql, /create policy public_queue_snapshots_read.*using \(true\)/i);
+  assert.match(sql, /create or replace function private\.refresh_public_queue_snapshot/);
+  assert.match(sql, /revoke all on function private\.refresh_public_queue_snapshot_trigger\(\) from public,anon,authenticated/i);
+  assert.match(sql, /drop function if exists public\.get_public_queue_status\(\)/i);
+  for (const field of ["patient_name", "patient_phone_hash", "tracking_secret_hash", "medical_details"]) {
+    assert.doesNotMatch(sql, new RegExp("\\b" + field + "\\b", "i"));
+  }
 });
 
 test("anonymous database access is limited to curated queue view", async () => {
