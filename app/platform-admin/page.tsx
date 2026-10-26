@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import ClinicProvisioningForm from "./clinic-provisioning-form";
+import ClinicDirectoryActions from "./clinic-directory-actions";
 
-type ClinicRow = { id: string; clinic_code: string; name: string; city: string | null; state: string | null; is_active: boolean; is_public: boolean; created_at: string };
+type ClinicRow = { id: string; clinic_code: string; name: string; address: string | null; city: string | null; state: string | null; phone: string | null; is_active: boolean; is_public: boolean; created_at: string };
 
 export default async function PlatformAdminPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   let supabase;
@@ -15,7 +16,7 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
 
   const { q = "" } = await searchParams;
   const { data, error } = await supabase.from("clinics")
-    .select("id,clinic_code,name,city,state,is_active,is_public,created_at")
+    .select("id,clinic_code,name,address,city,state,phone,is_active,is_public,created_at")
     .order("created_at", { ascending: false }).limit(500);
   if (error) throw new Error("Could not load clinic directory.");
   const allClinics = (data ?? []) as ClinicRow[];
@@ -38,7 +39,7 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
           <form className="flex gap-2" action="/platform-admin"><input name="q" defaultValue={q} placeholder="Search name, code, city…" aria-label="Search clinics" className="min-w-0 rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm"/><button className="rounded-full bg-[#14231d] px-4 py-2.5 text-sm font-bold text-white">Search</button></form>
         </div>
         {clinics.length === 0 ? <p className="mt-6 rounded-xl border border-dashed border-[#cbd9d0] p-8 text-center text-sm text-[#65736d]">No clinics match this search.</p> :
-          <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="border-b border-[#e1e9e4] text-[#65736d]"><th className="px-3 py-3">Clinic</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Clinic ID</th><th className="px-3 py-3">Created</th></tr></thead><tbody>{clinics.map(c=><tr key={c.id} className="border-b border-[#edf1ee]"><td className="px-3 py-4 font-bold">{c.name}</td><td className="px-3 py-4">{[c.city,c.state].filter(Boolean).join(", ") || "—"}</td><td className="px-3 py-4"><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{!c.is_public ? "Archived" : c.is_active ? "Active" : "Suspended"}</span></td><td className="px-3 py-4 font-mono">{c.clinic_code}</td><td className="px-3 py-4">{new Date(c.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</td></tr>)}</tbody></table></div>}
+          <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="border-b border-[#e1e9e4] text-[#65736d]"><th className="px-3 py-3">Clinic</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Clinic ID</th><th className="px-3 py-3">Created</th><th className="px-3 py-3">Actions</th></tr></thead><tbody>{clinics.map(c=><tr key={c.id} className="border-b border-[#edf1ee]"><td className="px-3 py-4 font-bold">{c.name}</td><td className="px-3 py-4">{[c.city,c.state].filter(Boolean).join(", ") || "—"}</td><td className="px-3 py-4"><span className="rounded-full bg-[#f2f6f3] px-3 py-1 text-xs font-bold">{!c.is_public ? "Archived" : c.is_active ? "Active" : "Suspended"}</span></td><td className="px-3 py-4 font-mono">{c.clinic_code}</td><td className="px-3 py-4">{new Date(c.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</td><td className="px-3 py-4"><ClinicDirectoryActions clinicId={c.id} status={!c.is_public ? "archived" : c.is_active ? "active" : "suspended"} name={c.name} address={c.address} city={c.city} state={c.state} phone={c.phone} /></td></tr>)}</tbody></table></div>}
       </section>
       <p className="mt-6 text-sm text-[#65736d]">Every platform-admin route verifies the Super Admin role server-side. Owner provisioning requires a server-only service-role key and is intentionally unavailable until that credential is configured.</p>
     </section>
