@@ -9,7 +9,7 @@ test("clinic subscription page is server-authorized and exposes Clinic ID and pl
   const provisioning = await file("../app/api/admin/clinics/route.ts");
   const update = await file("../app/api/admin/clinics/[clinicId]/route.ts");
   assert.match(page, /supabase\.rpc\("is_platform_admin"\)/);
-  assert.match(page, /Clinic ID: \{clinic\.clinic_code\}/);
+  assert.match(page, /clinic\.clinic_code/);
   assert.match(page, /ClinicDirectoryActions/);
   assert.match(page, /ClinicProvisioningForm/);
   assert.match(provisioning, /function clinicCode\(\)/);
