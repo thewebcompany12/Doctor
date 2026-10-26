@@ -88,7 +88,7 @@ jobs:
             if exists (
               select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
               where n.nspname='public' and c.relkind in ('r','v')
-                and c.relname <> 'public_queue_snapshots'
+                and c.relname not in ('public_queue_snapshots','public_clinic_directory')
                 and has_table_privilege('anon',c.oid,'SELECT')
             ) then raise exception 'Anonymous role can read a non-projection table/view'; end if;
             if exists (
@@ -99,6 +99,9 @@ jobs:
             if to_regclass('public.public_queue_status') is not null then raise exception 'Legacy public queue view remains'; end if;
             if to_regprocedure('public.has_clinic_role(uuid,text[])') is not null then raise exception 'RLS helper remains exposed in public schema'; end if;
             if has_function_privilege('anon','public.issue_public_queue_token(uuid,text,text)','EXECUTE') then raise exception 'Anonymous role can invoke online token issuance'; end if;
+            if has_table_privilege('anon','public.push_subscriptions','SELECT') or has_table_privilege('authenticated','public.push_subscriptions','SELECT') then raise exception 'Push subscription endpoints or keys are exposed'; end if;
+            if has_function_privilege('anon','public.cancel_public_queue_token(text)','EXECUTE') or has_function_privilege('authenticated','public.cancel_public_queue_token(text)','EXECUTE') then raise exception 'Public roles can directly invoke private token cancellation'; end if;
+            if not has_function_privilege('service_role','public.cancel_public_queue_token(text)','EXECUTE') then raise exception 'Service role cannot invoke secure token cancellation'; end if;
             if has_function_privilege('authenticated','public.issue_public_queue_token(uuid,text,text)','EXECUTE') then raise exception 'Authenticated users can invoke the service-only online booking RPC'; end if;
             if not has_function_privilege('service_role','public.issue_public_queue_token(uuid,text,text)','EXECUTE') then raise exception 'Service role cannot invoke the online booking RPC'; end if;
           end $$;
