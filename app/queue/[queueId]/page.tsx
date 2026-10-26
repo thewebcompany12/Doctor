@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import LiveQueue, { type LiveQueueSnapshot } from "./live-queue";
