@@ -212,7 +212,7 @@ test("staff membership attachment cannot be invoked directly by clinic users", a
 
 
 test("public online token booking is rate-limited and keeps tracking credentials private", async () => {
-  const sql = await file("../supabase/migrations/20261026161045_public_online_token_booking.sql");
+  const sql = await file("../supabase/migrations/20261026161535_public_online_token_booking.sql");
   assert.match(sql, /private\.issue_public_queue_token_impl/);
   assert.match(sql, /extensions\.gen_random_bytes\(32\)/);
   assert.match(sql, /extensions\.digest\(convert_to\(v_secret,'UTF8'\),'sha256'\)/);
