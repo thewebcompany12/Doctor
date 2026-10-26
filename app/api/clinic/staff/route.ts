@@ -85,12 +85,12 @@ export async function POST(request: Request) {
     await admin.auth.admin.deleteUser(invitedUser.id);
     return NextResponse.json({ error: "Staff profile setup failed; the invitation account was rolled back." }, { status: 500 });
   }
-  const { error: membershipError } = await session.rpc("attach_invited_staff", {
+  const { error: attachError } = await session.rpc("attach_invited_staff", {
     p_clinic_id: input.clinicId, p_user_id: invitedUser.id, p_role: input.role, p_email: input.email
   });
-  if (membershipError) {
+  if (attachError) {
     await admin.auth.admin.deleteUser(invitedUser.id);
-    return NextResponse.json({ error: membershipError.message.includes("usage limit") ? "The clinic has reached its configured staff limit." : "Staff membership setup failed; the invitation account was rolled back." }, { status: 409 });
+    return NextResponse.json({ error: attachError.message.toLowerCase().includes("usage limit") ? "The clinic has reached its configured staff limit." : "Staff membership setup failed; the invitation account was rolled back." }, { status: 409 });
   }
   return NextResponse.json({ invited: true, email: input.email, role: input.role }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
