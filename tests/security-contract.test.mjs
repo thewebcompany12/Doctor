@@ -159,6 +159,14 @@ test("staff invitations use an atomic role-checked membership operation", async 
   assert.match(route, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
 });
 
+test("walk-in booking is checked against the latest clinic plan at issuance time", async () => {
+  const sql = await file("../supabase/migrations/20261026155607_enforce_walkin_plan_at_issue.sql");
+  assert.match(sql, /subscription,booking,walkIn/);
+  assert.match(sql, /not coalesce\(v_walkin_allowed,true\) or not v_queue\.walk_in_enabled/i);
+  assert.match(sql, /private\.enforce_clinic_usage_limit\(v_queue\.clinic_id,'dailyTokens',v_clinic_count\)/);
+  assert.match(sql, /from public\.clinics where id=v_queue\.clinic_id and is_active for update/i);
+});
+
 test("temporary-password flag clears only after an actual password hash change", async () => {
   const sql = await file("../supabase/migrations/20261026153807_password_change_flag_auth_trigger.sql");
   assert.match(sql, /new\.encrypted_password is distinct from old\.encrypted_password/i);
