@@ -83,9 +83,11 @@ test("clinic provisioning requires authenticated Super Admin and verified owner 
   assert.match(source, /Cache-Control.*no-store/);
 });
 
-test("first-login password flag can only be cleared by authenticated self-service RPC", async () => {
-  const sql = await file("../supabase/migrations/20261026151630_first_login_password_change.sql");
-  assert.match(sql, /auth\.uid\(\) is null/i);
-  assert.match(sql, /where id\s*=\s*auth\.uid\(\)/i);
-  assert.match(sql, /revoke all on function public\.clear_password_change_flag\(\) from public, anon/i);
+test("temporary-password flag clears only after an actual password hash change", async () => {
+  const sql = await file("../supabase/migrations/20261026153807_password_change_flag_auth_trigger.sql");
+  assert.match(sql, /new\.encrypted_password is distinct from old\.encrypted_password/i);
+  assert.match(sql, /after update of encrypted_password on auth\.users/i);
+  assert.match(sql, /must_change_password=true/i);
+  assert.match(sql, /revoke all on function private\.clear_password_change_flag_on_auth_password_change\(\) from public,anon,authenticated/i);
+  assert.match(sql, /drop function if exists public\.clear_password_change_flag\(\)/i);
 });
