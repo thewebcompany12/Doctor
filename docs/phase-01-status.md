@@ -11,7 +11,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 - Supabase schema for clinics, memberships, doctors, branches, opening hours, queues, tokens, appointments, queue events, audit history, notifications and plan settings.
 - Atomic/idempotent queue operations, clinic-wide daily token limits with clinic-row serialization, appointment slot uniqueness, composite tenant foreign keys, least-privilege table grants and private-schema security-definer implementations behind invoker RPC wrappers.
 - Public queue status is served from a read-only aggregate projection table; it does not expose patient names, phone hashes or appointment details.
-- Version-matched source files for all 43 migrations applied to the connected Supabase project.
+- Version-matched source files for all 47 migrations applied to the connected Supabase project.
 
 ## Verification completed
 
@@ -20,7 +20,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 - CI assertions verified RLS is enabled on public base tables, anonymous reads are limited to the safe projection, and authenticated users do not have broad truncate privileges.
 - Synthetic two-clinic tests verified membership/token/appointment isolation, rejection of cross-clinic token issuance, staff appointment creation and status transitions, and anonymous aggregate-only queue visibility. Test data is rolled back.
 - Supabase Security Advisor returned no security lints. After optimizing seven RLS policies, performance linting no longer reports auth-initplan warnings; only informational unused-index findings remain.
-- Live checks confirmed the deployed login, public clinic directory and password-recovery request page respond, while unauthenticated workspace and Super Admin routes redirect to sign-in. The active production deployment is commit `b1f9c2d5`; the current main branch is newer and includes doctor/branch management changes that are not live yet because a deployment request was blocked by Vercel's daily deployment API quota. No authenticated Vercel CLI fallback is available in this environment.
+- Live checks confirmed the deployed login, public clinic directory and password-recovery request page respond, while unauthenticated workspace and Super Admin routes redirect to sign-in. The active production deployment is commit `af3f61322b4a05cbdc2beb23515df0b740390d24`; current `main` is newer and includes online booking, token tracking, doctor/branch management and the latest migration/test fixes. Deployment of current `main` is blocked by Vercel's HTTP 402 daily deployment quota (`api-deployments-free-per-day`, retry after 24 hours). No authenticated Vercel CLI fallback is available in this environment.
 
 ## Remaining blockers / limits
 
