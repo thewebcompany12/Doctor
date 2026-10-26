@@ -20,13 +20,14 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 - CI assertions verified RLS is enabled on public base tables, anonymous reads are limited to the safe projection, and authenticated users do not have broad truncate privileges.
 - Synthetic two-clinic tests verified membership/token/appointment isolation, rejection of cross-clinic token issuance, staff appointment creation and status transitions, and anonymous aggregate-only queue visibility. Test data is rolled back.
 - Supabase Security Advisor returned no lints on the latest audit.
-- Live checks confirmed the deployed login and public clinic directory respond, while unauthenticated workspace and Super Admin routes redirect to sign-in.
+- Live checks confirmed the deployed login, public clinic directory and password-recovery request page respond, while unauthenticated workspace and Super Admin routes redirect to sign-in. The active production deployment is commit `b1f9c2d5`; latest GitHub main is `5346c1f8` (docs-only changes after the latest green code verification). The newer doctor/branch management code is not live yet because a deployment request was blocked by Vercel's daily deployment API quota; no authenticated Vercel CLI fallback is available in this environment.
 
 ## Remaining blockers / limits
 
 - `SUPABASE_SERVICE_ROLE_KEY` is not configured in Vercel. Clinic provisioning, staff invitations, plan administration and other trusted admin writes fail safely until the project owner adds this server-only secret and redeploys.
 - The connected Supabase project has no Auth users, no Super Admin role and no clinic rows. The first Super Admin must be provisioned through the documented operator-controlled procedure in `docs/first-admin.md`; this must not be automated without a verified identity.
 - Add the production callback URL to Supabase Auth's redirect allow-list for password recovery.
+- After Vercel's deployment quota resets (or the owner resolves the plan/quota limit), deploy the current `main` commit and rerun the live checks.
 - Public online token issuance is not implemented; online booking remains disabled by default and its setting is plan-gated.
 - Parallel-load concurrency stress testing and a full real-browser end-to-end run with real authorized test accounts remain outstanding.
 
