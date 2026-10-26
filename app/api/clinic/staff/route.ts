@@ -11,6 +11,34 @@ const schema = z.object({
   role: z.enum(["manager","doctor","receptionist","compounder"])
 });
 
+export async function GET(request: Request) {
+  let session;
+  try { session = await createSupabaseServerClient(); }
+  catch { return NextResponse.json({ error: "Authentication is not configured." }, { status: 503 }); }
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const clinicId = new URL(request.url).searchParams.get("clinicId") ?? "";
+  if (!z.uuid().safeParse(clinicId).success) return NextResponse.json({ error: "Valid clinic ID is required." }, { status: 400 });
+  const { data: membership, error: membershipError } = await session.from("clinic_memberships")
+    .select("role").eq("clinic_id",clinicId).eq("user_id",user.id).eq("is_active",true).maybeSingle();
+  if (membershipError) return NextResponse.json({ error: "Could not verify clinic permissions." }, { status: 503 });
+  if (!membership || !["owner","manager"].includes(membership.role)) return NextResponse.json({ error: "Clinic owner or manager permission required." }, { status: 403 });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return NextResponse.json({ error: "Staff directory is not configured. Add SUPABASE_SERVICE_ROLE_KEY as a server-only Vercel environment variable." }, { status: 503 });
+  const admin = createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}});
+  const { data: rows, error } = await admin.from("clinic_memberships").select("id,user_id,role,is_active,created_at").eq("clinic_id",clinicId).order("created_at");
+  if (error) return NextResponse.json({ error: "Could not load clinic staff." }, { status: 500 });
+  const users = await Promise.all((rows ?? []).map(async row => {
+    const [{ data: profile }, { data: authUser }] = await Promise.all([
+      admin.from("profiles").select("display_name").eq("id",row.user_id).maybeSingle(),
+      admin.auth.admin.getUserById(row.user_id)
+    ]);
+    return { membershipId: row.id, role: row.role, isActive: row.is_active, displayName: profile?.display_name || authUser.user?.email?.split("@")[0] || "Staff member", email: authUser.user?.email ?? "", createdAt: row.created_at };
+  }));
+  return NextResponse.json({ staff: users }, { headers: { "Cache-Control": "no-store" } });
+}
+
 export async function POST(request: Request) {
   let session;
   try { session = await createSupabaseServerClient(); }
