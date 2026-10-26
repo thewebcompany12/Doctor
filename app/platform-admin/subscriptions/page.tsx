@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import ClinicDirectoryActions from "../clinic-directory-actions";
+import ClinicProvisioningForm from "../clinic-provisioning-form";
+import ClinicIdCopy from "../clinic-id-copy";
 
 type ClinicRow = {
   id: string; clinic_code: string; name: string; address: string | null;
