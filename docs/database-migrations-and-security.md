@@ -10,6 +10,7 @@ The connected Supabase project reports these applied migration versions:
 4. `20261026144924 atomic_queue_operations`
 5. `20261026145147 queue_mutation_security_hardening`
 6. `20261026151259 public_api_privilege_hardening`
+7. `20261026151630 first_login_password_change`
 
 The repository now contains version-matched SQL files for this history. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
 
@@ -29,4 +30,4 @@ The intended public surface is only `public.public_queue_status`, which returns 
 
 ## Known scope gaps
 
-The current schema does not contain branch or appointment tables. The current UI is a foundation, not a complete production receptionist/owner product. RLS policies have been inspected, but synthetic multi-clinic authenticated/unauthenticated integration tests have not been run. No production data was reset or deleted.
+The current schema does not contain branch or appointment tables. The Super Admin clinic directory now supports search, create/onboard, edit, activate, suspend and archive controls. Temporary-password onboarding is enforced through a first-login password-change page. The current UI is still not a complete production receptionist/owner product. RLS policies have been inspected, but synthetic multi-clinic authenticated/unauthenticated integration tests have not been run. No production data was reset or deleted.
