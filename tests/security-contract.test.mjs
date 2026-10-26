@@ -106,7 +106,8 @@ test("clinic provisioning requires authenticated Super Admin and verified owner 
 
 test("queue and appointment RPC entry points are invoker wrappers", async () => {
   const sql = await file("../supabase/migrations/20261026155318_private_queue_rpc_implementations.sql");
-  assert.match(sql, /create or replace function private\.transition_queue_token_impl/);
+  assert.match(sql, /FUNCTION private\./);
+  assert.match(sql, /revoke all on function private\.transition_queue_token_impl/);
   assert.match(sql, /create or replace function public\.transition_queue_token[\s\S]*?security invoker/);
   assert.match(sql, /create or replace function public\.issue_staff_token[\s\S]*?security invoker/);
   assert.match(sql, /grant execute on function private\.issue_staff_token_impl\(uuid,text,text\) to authenticated/);
