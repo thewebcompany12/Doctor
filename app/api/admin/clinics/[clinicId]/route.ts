@@ -6,7 +6,17 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("update"), name: z.string().trim().min(2).max(120).optional(), address: z.string().trim().max(240).nullable().optional(), city: z.string().trim().max(100).nullable().optional(), state: z.string().trim().max(100).nullable().optional(), phone: z.string().trim().max(30).nullable().optional() }),
-  z.object({ action: z.enum(["activate", "suspend", "archive"]) })
+  z.object({ action: z.enum(["activate", "suspend", "archive"]) }),
+  z.object({
+    action: z.literal("configure"),
+    planCode: z.enum(["starter","growth","enterprise","custom"]),
+    maxDoctors: z.number().int().min(1).max(1000),
+    maxBranches: z.number().int().min(1).max(1000),
+    maxStaff: z.number().int().min(1).max(10000),
+    maxDailyTokens: z.number().int().min(1).max(10000).nullable(),
+    onlineBookingEnabled: z.boolean(),
+    walkInEnabled: z.boolean()
+  })
 ]);
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ clinicId: string }> }) {
@@ -31,6 +41,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ cl
   const { data: before, error: readError } = await adminClient.from("clinics").select("id,clinic_code,name,address,city,state,phone,is_active,is_public").eq("id", clinicId).maybeSingle();
   if (readError) return NextResponse.json({ error: "Could not read clinic." }, { status: 500 });
   if (!before) return NextResponse.json({ error: "Clinic not found." }, { status: 404 });
+
+  if (parsed.data.action === "configure") {
+    const config = parsed.data;
+    const { data: existingSettings, error: settingsReadError } = await adminClient.from("clinic_settings").select("settings").eq("clinic_id",clinicId).maybeSingle();
+    if (settingsReadError) return NextResponse.json({ error: "Could not load clinic plan settings." }, { status: 500 });
+    const previousSettings = existingSettings?.settings && typeof existingSettings.settings === "object" ? existingSettings.settings as Record<string,unknown> : {};
+    const nextSettings = {
+      ...previousSettings,
+      subscription: {
+        planCode: config.planCode,
+        limits: { doctors: config.maxDoctors, branches: config.maxBranches, staff: config.maxStaff, dailyTokens: config.maxDailyTokens },
+        booking: { online: config.onlineBookingEnabled, walkIn: config.walkInEnabled }
+      }
+    };
+    const { error: settingsError } = await adminClient.from("clinic_settings").upsert({ clinic_id: clinicId, settings: nextSettings, updated_at: new Date().toISOString() }, { onConflict: "clinic_id" });
+    if (settingsError) return NextResponse.json({ error: "Clinic plan settings could not be saved." }, { status: 500 });
+    const { error: auditError } = await adminClient.from("audit_logs").insert({
+      clinic_id: clinicId, actor_user_id: user.id, action: "clinic.plan_configured", target_type: "clinic", target_id: clinicId,
+      metadata: { before: previousSettings.subscription ?? null, after: nextSettings.subscription }
+    });
+    if (auditError) {
+      if (existingSettings) await adminClient.from("clinic_settings").update({ settings: previousSettings, updated_at: new Date().toISOString() }).eq("clinic_id",clinicId);
+      else await adminClient.from("clinic_settings").delete().eq("clinic_id",clinicId);
+      return NextResponse.json({ error: "Audit record failed; plan settings were rolled back where possible." }, { status: 500 });
+    }
+    return NextResponse.json({ settings: nextSettings.subscription }, { headers: { "Cache-Control": "no-store" } });
+  }
 
   let patch: Record<string, unknown>;
   const action = parsed.data.action;
