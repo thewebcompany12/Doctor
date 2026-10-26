@@ -104,6 +104,15 @@ test("clinic provisioning requires authenticated Super Admin and verified owner 
   assert.match(source, /Cache-Control.*no-store/);
 });
 
+test("queue and appointment RPC entry points are invoker wrappers", async () => {
+  const sql = await file("../supabase/migrations/20261026155318_private_queue_rpc_implementations.sql");
+  assert.match(sql, /create or replace function private\.transition_queue_token_impl/);
+  assert.match(sql, /create or replace function public\.transition_queue_token[\s\S]*?security invoker/);
+  assert.match(sql, /create or replace function public\.issue_staff_token[\s\S]*?security invoker/);
+  assert.match(sql, /grant execute on function private\.issue_staff_token_impl\(uuid,text,text\) to authenticated/);
+  assert.match(sql, /revoke all on function public\.issue_staff_token\(uuid,text,text\) from public,anon/);
+});
+
 test("staff appointment workflow checks clinic role and configured hours", async () => {
   const sql = await file("../supabase/migrations/20261026154936_staff_appointment_workflow.sql");
   assert.match(sql, /private\.has_clinic_role\(p_clinic_id,array\['owner','manager','doctor','receptionist'\]\)/);
