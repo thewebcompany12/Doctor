@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type PushSubscriptionJson = { endpoint: string; expirationTime: number|null; keys: {p256dh:string;auth:string} };
 
@@ -12,12 +12,20 @@ function decodeVapidKey(value:string) {
  return bytes.buffer;
 }
 
-export default function PatientReminders({ trackingSecret }: { trackingSecret:string }) {
+export default function PatientReminders({ trackingSecret, tokenStatus, tokensAhead }: { trackingSecret:string; tokenStatus:string; tokensAhead:number }) {
  const [mode,setMode]=useState<"off"|"browser"|"push"|"denied">("off");
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
  const [subscription,setSubscription]=useState<PushSubscription|null>(null);
  const vapidKey=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+ const lastAlert=useRef("");
+ useEffect(()=>{
+  if(mode!=="browser"||!("Notification" in window)||Notification.permission!=="granted")return;
+  let key="",title="",body="";
+  if(tokenStatus==="called"||tokenStatus==="in_consultation"){key="called";title="It’s your turn";body="The clinic has called your token. Please follow the clinic’s instructions.";}
+  else if(tokenStatus==="waiting"&&tokensAhead<=2){key="approaching";title="Your turn is approaching";body="You are getting close to your turn. Waiting time remains an estimate."}
+  if(key&&key!==lastAlert.current){lastAlert.current=key;try{new Notification(title,{body,icon:"/icon.svg",tag:"doctor-queue-"+key});}catch{}}
+ },[mode,tokenStatus,tokensAhead]);
  async function enable() {
   setBusy(true);setMessage("");
   try {
@@ -49,7 +57,8 @@ export default function PatientReminders({ trackingSecret }: { trackingSecret:st
   try{
    const sub=subscription??await (await navigator.serviceWorker.ready).pushManager.getSubscription();
    if(sub){
-    await fetch("/api/public/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"unsubscribe",trackingSecret,subscription:sub.toJSON()})});
+    const response=await fetch("/api/public/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"unsubscribe",trackingSecret,subscription:sub.toJSON()})});
+    if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(typeof body.error==="string"?body.error:"Could not revoke server subscription.");}
     await sub.unsubscribe();
    }
    setSubscription(null);setMode("off");setMessage("This device's reminders were disabled.");
