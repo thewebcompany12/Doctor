@@ -52,7 +52,7 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
   const archived = allClinics.filter(c => !c.is_public).length;
 
   return <main className="min-h-screen">
-    <header className="border-b border-[#e1e9e4] bg-white"><div className="container flex h-20 items-center justify-between"><Link href="/" className="font-black">Doctor Queue</Link><span className="text-sm font-bold text-[#147d55]">Platform administration</span></div></header>
+    <header className="border-b border-[#e1e9e4] bg-white"><div className="container flex min-h-20 flex-wrap items-center justify-between gap-3 py-4"><Link href="/" className="font-black">Doctor Queue</Link><nav className="flex flex-wrap items-center gap-3 text-sm font-bold"><Link href="/platform-admin/subscriptions" className="rounded-full bg-[#147d55] px-4 py-2 text-white">Clinic subscriptions</Link><span className="text-[#147d55]">Platform administration</span></nav></div></header>
     <section className="container py-10 md:py-12">
       <p className="eyebrow">Super Admin</p><h1 className="mt-3 text-3xl font-black">Platform overview</h1><p className="mt-2 text-[#65736d]">Signed in as {user.email ?? "authorized administrator"}.</p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -71,7 +71,7 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
         {auditRows.length === 0 ? <p className="mt-5 rounded-xl border border-dashed border-[#cbd9d0] p-6 text-sm text-[#65736d]">No administrative actions have been recorded yet.</p> :
           <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-[#e1e9e4] text-[#65736d]"><th className="px-3 py-3">Action</th><th className="px-3 py-3">Clinic</th><th className="px-3 py-3">Target</th><th className="px-3 py-3">Time (IST)</th></tr></thead><tbody>{auditRows.map(row=><tr key={row.id} className="border-b border-[#edf1ee]"><td className="px-3 py-3 font-bold">{row.action}</td><td className="px-3 py-3 font-mono text-xs">{row.clinic_id ?? "Platform"}</td><td className="px-3 py-3">{row.target_type ?? "—"}{row.target_id ? " · " + row.target_id.slice(0,8) : ""}</td><td className="px-3 py-3">{new Date(row.created_at).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"})}</td></tr>)}</tbody></table></div>}
       </section>
-      <p className="mt-6 text-sm text-[#65736d]">Every platform-admin route verifies the Super Admin role server-side. Owner provisioning requires a server-only service-role key and is intentionally unavailable until that credential is configured.</p>
+      <p className="mt-6 text-sm text-[#65736d]">Every platform-admin route verifies the Super Admin role server-side. Elevated provisioning and clinic updates use a server-only encrypted Vercel environment variable; the key is never exposed to browser code.</p>
     </section>
   </main>;
 }
