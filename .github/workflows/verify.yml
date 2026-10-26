@@ -170,3 +170,56 @@ jobs:
           reset role;
           rollback;
           SQL
+
+      - name: Stress concurrent token allocation and idempotency
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
+          insert into auth.users(id,email,encrypted_password)
+          values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','queue-stress@example.invalid','synthetic-stress');
+          insert into public.clinics(id,clinic_code,name,is_active,is_public)
+          values ('cccccccc-0000-4000-8000-000000000001','DQ-CONC-TEST','Synthetic Concurrency Clinic',true,true);
+          insert into public.clinic_memberships(clinic_id,user_id,role,is_active)
+          values ('cccccccc-0000-4000-8000-000000000001','cccccccc-cccc-4ccc-8ccc-cccccccccccc','owner',true);
+          insert into public.doctors(id,clinic_id,full_name,specialty,is_active,is_public)
+          values ('cccccccc-0000-4000-8000-000000000011','cccccccc-0000-4000-8000-000000000001','Synthetic Concurrent Doctor','Test',true,true);
+          insert into public.queues(id,clinic_id,doctor_id,service_date,status,token_prefix,next_token_number,walk_in_enabled,max_tokens)
+          values ('cccccccc-0000-4000-8000-000000000111','cccccccc-0000-4000-8000-000000000001','cccccccc-0000-4000-8000-000000000011',(timezone('Asia/Kolkata',now()))::date,'open','C',1,true,100);
+          insert into public.clinic_settings(clinic_id,settings)
+          values ('cccccccc-0000-4000-8000-000000000001','{"subscription":{"limits":{"dailyTokens":100}}}'::jsonb)
+          on conflict (clinic_id) do update set settings=excluded.settings;
+          SQL
+          pids=()
+          for i in $(seq 1 20); do
+            (
+              psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 -q <<SQL >/dev/null
+          begin;
+          set local role authenticated;
+          set local request.jwt.claim.sub = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+          select * from public.issue_staff_token('cccccccc-0000-4000-8000-000000000111','Concurrent patient $i','stress-$i');
+          commit;
+          SQL
+            ) &
+            pids+=("$!")
+          done
+          failed=0
+          for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
+          test "$failed" -eq 0
+          psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
+          do $
+          declare n integer; unique_n integer; next_n integer; first_id uuid; second_id uuid;
+          begin
+            select count(*),count(distinct token_number) into n,unique_n from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';
+            if n<>20 or unique_n<>20 then raise exception 'Concurrent token allocation produced % rows and % unique numbers',n,unique_n; end if;
+            select next_token_number into next_n from public.queues where id='cccccccc-0000-4000-8000-000000000111';
+            if next_n<>21 then raise exception 'Expected next token number 21, found %',next_n; end if;
+            perform set_config('request.jwt.claim.sub','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
+            select token_id into first_id from public.issue_staff_token('cccccccc-0000-4000-8000-000000000111','Idempotent patient','same-key');
+            select token_id into second_id from public.issue_staff_token('cccccccc-0000-4000-8000-000000000111','Idempotent patient','same-key');
+            if first_id is distinct from second_id then raise exception 'Repeated idempotency key allocated multiple tokens'; end if;
+            select count(*) into n from public.queue_tokens where queue_id='cccccccc-0000-4000-8000-000000000111';
+            if n<>21 then raise exception 'Idempotent repeat created extra token; count=%',n; end if;
+          end $;
+          SQL
