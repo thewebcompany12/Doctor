@@ -12,6 +12,7 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName }: 
   const [result,setResult]=useState<BookingResult|null>(null);
   const [copied,setCopied]=useState(false);
   const [trackingUrl,setTrackingUrl]=useState("");
+  const [idempotencyKey,setIdempotencyKey]=useState("");
   useEffect(()=>{if(result)setTrackingUrl(window.location.origin+"/token-status#secret="+result.trackingSecret);else setTrackingUrl("");},[result]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -19,13 +20,16 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName }: 
     const form=event.currentTarget;
     const data=new FormData(form);
     setBusy(true);setError("");setResult(null);setCopied(false);
+    const requestKey=idempotencyKey||crypto.randomUUID();
+    setIdempotencyKey(requestKey);
     try {
       const response=await fetch("/api/public/tokens",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-        action:"book",queueId,patientName:String(data.get("patientName")??"").trim()
+        action:"book",queueId,patientName:String(data.get("patientName")??"").trim(),idempotencyKey:requestKey
       })});
       const body=await response.json();
       if(!response.ok){setError(typeof body.error==="string"?body.error:"Online booking failed.");return;}
       setResult(body as BookingResult);
+      setIdempotencyKey(crypto.randomUUID());
       form.reset();
     } catch { setError("Booking request failed. Check your connection and retry."); }
     finally { setBusy(false); }
