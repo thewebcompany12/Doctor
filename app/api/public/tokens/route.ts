@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 const schema = z.object({
   action: z.enum(["book","track","cancel"]),
   queueId: z.uuid().optional(),
+  idempotencyKey: z.uuid().optional(),
   patientName: z.string().trim().min(1).max(80).optional(),
   trackingSecret: z.string().regex(/^[0-9a-f]{64}$/i).optional()
 });
@@ -34,14 +35,14 @@ export async function POST(request: Request) {
   const {client:admin,key}=configured;
 
   if(input.action==="book") {
-    if(!input.queueId||!input.patientName) return noStore({error:"Queue and patient name are required."},400);
+    if(!input.queueId||!input.patientName||!input.idempotencyKey) return noStore({error:"Queue, patient name and idempotency key are required."},400);
     const rateKey=createHmac("sha256",key).update("doctor-queue-online-booking:"+requestIp(request)+":"+input.queueId).digest("hex");
     const {data,error}=await admin.rpc("issue_public_queue_token",{
-      p_queue_id:input.queueId,p_patient_label:input.patientName,p_rate_limit_key_hash:rateKey
+      p_queue_id:input.queueId,p_patient_label:input.patientName,p_rate_limit_key_hash:rateKey,p_idempotency_key:input.idempotencyKey
     });
     if(error||!data||(Array.isArray(data)&&data.length===0)) {
       const message=error?.message ?? "";
-      const status=message.toLowerCase().includes("rate limit")?429:message.toLowerCase().includes("not found")?404:message.toLowerCase().includes("disabled")||message.toLowerCase().includes("limit")||message.toLowerCase().includes("not available")?409:503;
+      const status=message.toLowerCase().includes("rate limit")?429:message.toLowerCase().includes("not found")?404:message.toLowerCase().includes("disabled")||message.toLowerCase().includes("limit")||message.toLowerCase().includes("not available")||message.toLowerCase().includes("outside configured clinic hours")?409:503;
       const safeMessage=status===429?"Too many booking attempts from this network. Try again in 15 minutes.":status===404?"This public queue is not available.":status===409?message:"Online token booking is temporarily unavailable.";
       return noStore({error:safeMessage},status);
     }
