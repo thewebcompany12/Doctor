@@ -20,3 +20,80 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: test-publishable-key
+
+  migration-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: doctorqueue
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d doctorqueue"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Bootstrap minimal Supabase roles and auth schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          create schema auth;
+          create table auth.users (
+            id uuid primary key,
+            email text unique,
+            created_at timestamptz not null default now(),
+            updated_at timestamptz not null default now()
+          );
+          create function auth.uid() returns uuid language sql stable
+          as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+          grant usage on schema auth to anon, authenticated, service_role;
+          grant execute on function auth.uid() to anon, authenticated, service_role;
+          grant select on auth.users to authenticated, service_role;
+          SQL
+      - name: Apply every migration to a clean database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for migration in supabase/migrations/*.sql; do
+            echo "Applying $migration"
+            psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Assert RLS and public grants
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d doctorqueue -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          begin
+            if exists (
+              select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+              where n.nspname='public' and c.relkind='r' and not c.relrowsecurity
+            ) then raise exception 'A public base table is missing RLS'; end if;
+            if exists (
+              select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+              where n.nspname='public' and c.relkind in ('r','v')
+                and c.relname <> 'public_queue_snapshots'
+                and has_table_privilege('anon',c.oid,'SELECT')
+            ) then raise exception 'Anonymous role can read a non-projection table/view'; end if;
+            if exists (
+              select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+              where n.nspname='public' and c.relkind='r'
+                and has_table_privilege('authenticated',c.oid,'TRUNCATE')
+            ) then raise exception 'Authenticated role has TRUNCATE on a public table'; end if;
+            if to_regclass('public.public_queue_status') is not null then raise exception 'Legacy public queue view remains'; end if;
+            if to_regprocedure('public.has_clinic_role(uuid,text[])') is not null then raise exception 'RLS helper remains exposed in public schema'; end if;
+          end $$;
+          SQL
