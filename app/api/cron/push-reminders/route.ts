@@ -46,6 +46,8 @@ async function handler(request:Request){
    if(countError||count===null||count>2)continue;
    eventKey="turn-approaching:"+token.service_date;title="Your turn is approaching";body="You are getting close to your turn at "+queue.clinic_name+". Waiting time is only an estimate.";
   }else continue;
+  const matchingSubs=subs.filter(sub=>eventKey?.startsWith("turn-approaching:")?sub.preferences?.turn_approaching!==false:sub.preferences?.your_turn!==false);
+  if(matchingSubs.length===0)continue;
   const {data:existing}=await admin.from("notification_deliveries").select("id,status,attempts")
    .eq("token_id",tokenId).eq("channel","web_push").eq("event_key",eventKey).maybeSingle();
   if(existing?.status==="sent"||existing&&existing.attempts>=3)continue;
@@ -58,7 +60,7 @@ async function handler(request:Request){
    if(insertError||!insert)continue;deliveryId=insert.id;
   }
   let delivered=0,lastCode:string|null=null;
-  for(const sub of subs){
+  for(const sub of matchingSubs){
    try{
     await webpush.sendNotification({endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth_secret}},JSON.stringify({title,body,url:"/token-status"}),{TTL:300});
     delivered++;
