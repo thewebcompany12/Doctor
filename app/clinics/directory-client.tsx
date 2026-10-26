@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Clock3, MapPin, Search, Stethoscope } from "lucide-react";
+import { ArrowUpRight, MapPin, Search, Stethoscope } from "lucide-react";
 import OnlineTokenBooking from "./online-token-booking";
 
 export type PublicClinic = {
