@@ -45,12 +45,13 @@ export default function QueueDashboard({ clinics, queues, tokens }: { clinics: C
 
   async function issueToken(queue: Queue, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const label = String(data.get("patientLabel") ?? "").trim() || "Patient";
     const result = await rpc("issue_staff_token", {
       p_queue_id: queue.id, p_patient_label: label, p_idempotency_key: crypto.randomUUID()
     }, "Token issued.");
-    if (result) event.currentTarget.reset();
+    if (result) form.reset();
   }
 
   async function transition(token: Token, action: string) {
