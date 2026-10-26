@@ -38,6 +38,20 @@ test("anonymous database access is limited to curated queue view", async () => {
   assert.match(sql, /revoke all on function public\.issue_staff_token/i);
 });
 
+test("branch and appointment data use clinic-scoped RLS", async () => {
+  const sql = await file("../supabase/migrations/20261026152713_branches_and_appointments.sql");
+  assert.match(sql, /alter table public\.clinic_branches enable row level security/i);
+  assert.match(sql, /alter table public\.appointments enable row level security/i);
+  assert.match(sql, /foreign key \(clinic_id,doctor_id\) references public\.doctors\(clinic_id,id\)/i);
+  assert.match(sql, /patient_user_id=auth\.uid\(\)/i);
+});
+
+test("ordinary users cannot write audit history", async () => {
+  const sql = await file("../supabase/migrations/20261026152528_audit_log_write_lockdown.sql");
+  assert.match(sql, /drop policy if exists audit_staff_insert/i);
+  assert.match(sql, /revoke insert, update, delete, truncate on public\.audit_logs from authenticated/i);
+});
+
 test("clinic provisioning requires authenticated Super Admin and verified owner email", async () => {
   const source = await file("../app/api/admin/clinics/route.ts");
   assert.match(source, /session\.auth\.getUser\(\)/);
