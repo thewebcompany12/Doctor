@@ -24,7 +24,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 
 ## Remaining blockers / limits
 
-- `SUPABASE_SERVICE_ROLE_KEY` is not configured in Vercel. Clinic provisioning, staff invitations, plan administration and other trusted admin writes fail safely until the project owner adds this server-only secret and redeploys.
+- `SUPABASE_SERVICE_ROLE_KEY` has a Vercel Production entry but its stored value is empty. Clinic provisioning, staff invitations, plan administration and other trusted admin writes fail safely until the project owner replaces it with the actual Supabase server-side service-role secret and redeploys. Exact steps are in `docs/first-admin.md`.
 - The connected Supabase project has no Auth users, no Super Admin role and no clinic rows. The first Super Admin must be provisioned through the documented operator-controlled procedure in `docs/first-admin.md`; this must not be automated without a verified identity.
 - Add the production callback URL to Supabase Auth's redirect allow-list for password recovery.
 - Public online token issuance is implemented as a service-role-only RPC with hashed, expiring tracking secrets, per-key rate limiting and queue/plan gates. Online booking remains disabled by default.
