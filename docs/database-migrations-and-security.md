@@ -19,6 +19,7 @@ The connected Supabase project reports these applied migration versions:
 13. `20261026152528 audit_log_write_lockdown`
 14. `20261026152608 audit_log_privilege_cleanup`
 15. `20261026152713 branches_and_appointments`
+16. `20261026152852 public_queue_rpc_privacy_hardening`
 
 The repository now contains version-matched SQL files for this history. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
 
@@ -34,7 +35,7 @@ The repository now contains version-matched SQL files for this history. The foun
 
 ## Anonymous API surface
 
-The intended public surface is only `public.public_queue_status`, which returns clinic/doctor display fields and aggregate queue counts. It deliberately excludes patient names, phone hashes, tracking secrets and appointment details. The view uses owner privileges to aggregate private base tables, so Supabase's `security_definer_view` advisor finding remains a documented exception requiring a dedicated security review. Anonymous direct table privileges have been revoked; only SELECT on the curated view is granted to `anon`.
+The intended public surface is only the `get_public_queue_status()` RPC, which returns clinic/doctor display fields and aggregate queue counts. It deliberately excludes patient names, phone hashes, tracking secrets and appointment details. The function is SECURITY DEFINER with a fixed search path and no caller-supplied query parameters; EXECUTE is granted only to `anon`. The former definer view was dropped. Anonymous direct table privileges remain revoked.
 
 ## Known scope gaps
 
