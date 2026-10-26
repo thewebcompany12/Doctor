@@ -193,6 +193,11 @@ test("temporary-password flag clears only after an actual password hash change",
 });
 
 
+test("legacy four-argument staff RPC is revoked for every API role", async () => {
+  const sql = await file("../supabase/migrations/20261026161405_revoke_legacy_staff_rpc.sql");
+  assert.match(sql, /revoke all on function private\.attach_invited_staff\(uuid,uuid,text,text\) from public,anon,authenticated,service_role/i);
+});
+
 test("staff membership attachment cannot be invoked directly by clinic users", async () => {
   const sql = await file("../supabase/migrations/20261026160926_staff_membership_rpc_service_role_only.sql");
   assert.match(sql, /revoke all on function public\.attach_invited_staff\(uuid,uuid,text,text,uuid\) from public,anon,authenticated/i);
