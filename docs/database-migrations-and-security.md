@@ -23,8 +23,8 @@ The connected Supabase project reports these applied migration versions:
 17. `20261026153021 public_queue_snapshot_table`
 18. `20261026153114 public_queue_snapshot_backfill`
 19. `20261026153309 tenant_consistency_constraints`
-20. `20261026153600 least_privilege_table_grants`
 20. `20261026153551 private_security_helpers`
+21. `20261026153623 least_privilege_table_grants`
 
 The repository now contains version-matched SQL files for this history. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. **It has not yet been proven by applying the entire chain to a clean disposable database.** Do not describe the chain as clean-install verified until that test is performed.
 
