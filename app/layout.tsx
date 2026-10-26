@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import PwaRegistration from "./pwa-registration";
 
 export const metadata: Metadata = {
   title: { default: "Doctor Queue — Know your turn", template: "%s | Doctor Queue" },
@@ -16,5 +17,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body>{children}<PwaRegistration /></body></html>;
 }
