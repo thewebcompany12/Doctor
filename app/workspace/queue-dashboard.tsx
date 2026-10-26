@@ -6,10 +6,12 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Clinic = { id: string; name: string; clinic_code: string; role: string; address: string | null; city: string | null; state: string | null; phone: string | null };
 type Branch = { id: string; clinic_id: string; branch_code: string; name: string; city: string | null; state: string | null; is_active: boolean };
+type Doctor = { id: string; clinic_id: string; full_name: string; specialty: string | null; is_active: boolean };
+type ClinicHour = { id: string; clinic_id: string; doctor_id: string | null; weekday: number; opens_at: string | null; closes_at: string | null; is_closed: boolean; doctors: { full_name: string } | null };
 type Queue = { id: string; clinic_id: string; service_date: string; status: string; token_prefix: string; online_booking_enabled: boolean; walk_in_enabled: boolean; max_tokens: number | null; next_token_number: number; doctors: { full_name: string; specialty: string | null } | null };
 type Token = { id: string; queue_id: string; token_number: number; display_token: string; patient_label: string; status: string };
 
-export default function QueueDashboard({ clinics, queues, tokens, branches }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[]; branches: Branch[] }) {
+export default function QueueDashboard({ clinics, queues, tokens, branches, doctors, hours }: { clinics: Clinic[]; queues: Queue[]; tokens: Token[]; branches: Branch[]; doctors: Doctor[]; hours: ClinicHour[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
@@ -56,6 +58,20 @@ export default function QueueDashboard({ clinics, queues, tokens, branches }: { 
       p_phone: String(data.get("branchPhone") ?? "").trim() || null
     }, "Branch created.");
     if (result) form.reset();
+  }
+
+  async function saveHours(event: FormEvent<HTMLFormElement>, clinic: Clinic) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const isClosed = data.get("isClosed") === "on";
+    await rpc("set_clinic_hours", {
+      p_clinic_id: clinic.id,
+      p_doctor_id: String(data.get("doctorId") ?? "") || null,
+      p_weekday: Number(data.get("weekday")),
+      p_opens_at: isClosed ? null : String(data.get("opensAt") ?? ""),
+      p_closes_at: isClosed ? null : String(data.get("closesAt") ?? ""),
+      p_is_closed: isClosed
+    }, "Opening hours saved.");
   }
 
   async function setupQueue(event: FormEvent<HTMLFormElement>, clinic: Clinic) {
@@ -127,6 +143,17 @@ export default function QueueDashboard({ clinics, queues, tokens, branches }: { 
             <label className="text-sm font-bold">Postal code<input name="postalCode" maxLength={16} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
             <label className="text-sm font-bold">Phone<input name="branchPhone" maxLength={30} className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
             <button disabled={!!busy} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white sm:col-span-2">{busy === "create_clinic_branch" ? "Creating…" : "Create branch"}</button>
+          </form>
+        </details>}
+        {canSetup && <details className="mt-3 rounded-xl border border-[#e1e9e4] p-4"><summary className="cursor-pointer font-bold">Opening hours and doctor schedules</summary>
+          <div className="mt-3 space-y-2">{hours.filter(h=>h.clinic_id===clinic.id).sort((a,b)=>a.weekday-b.weekday).map(hour=><div key={hour.id} className="flex flex-wrap justify-between gap-2 rounded-lg bg-[#f6f9f7] p-3 text-sm"><span className="font-bold">{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][hour.weekday]} · {hour.doctors?.full_name ?? "Clinic-wide"}</span><span className="text-[#65736d]">{hour.is_closed ? "Closed" : (hour.opens_at ?? "—").slice(0,5)+"–"+(hour.closes_at ?? "—").slice(0,5)}</span></div>)}</div>
+          <form onSubmit={event=>saveHours(event,clinic)} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-bold">Doctor<select name="doctorId" className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal"><option value="">Clinic-wide hours</option>{doctors.filter(d=>d.clinic_id===clinic.id&&d.is_active).map(d=><option key={d.id} value={d.id}>{d.full_name}{d.specialty ? " · "+d.specialty : ""}</option>)}</select></label>
+            <label className="text-sm font-bold">Day<select name="weekday" required className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal">{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"].map((day,index)=><option key={day} value={index}>{day}</option>)}</select></label>
+            <label className="text-sm font-bold">Opens at<input name="opensAt" type="time" defaultValue="09:00" className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="text-sm font-bold">Closes at<input name="closesAt" type="time" defaultValue="17:00" className="mt-1 w-full rounded-lg border border-[#dbe5df] px-3 py-2 font-normal" /></label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="isClosed" /> Closed on this day</label>
+            <button disabled={!!busy} className="rounded-full bg-[#147d55] px-4 py-2.5 text-sm font-bold text-white">{busy === "set_clinic_hours" ? "Saving…" : "Save schedule"}</button>
           </form>
         </details>}
         {canSetup && <details className="mt-5 rounded-xl border border-dashed border-[#cbd9d0] p-4"><summary className="cursor-pointer font-bold">Set up / configure today’s doctor queue</summary>
