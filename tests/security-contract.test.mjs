@@ -51,6 +51,15 @@ test("anonymous database access is limited to curated queue view", async () => {
   assert.match(sql, /revoke all on function public\.issue_staff_token/i);
 });
 
+test("RLS helpers are private and public wrappers do not elevate privileges", async () => {
+  const sql = await file("../supabase/migrations/20261026153551_private_security_helpers.sql");
+  assert.match(sql, /create or replace function private\.has_clinic_role/);
+  assert.match(sql, /create or replace function private\.is_platform_admin/);
+  assert.match(sql, /drop function public\.has_clinic_role/);
+  assert.match(sql, /security invoker set search_path=pg_catalog,public,private/);
+  assert.match(sql, /private\.has_clinic_role/);
+});
+
 test("branch and appointment data use clinic-scoped RLS", async () => {
   const sql = await file("../supabase/migrations/20261026152713_branches_and_appointments.sql");
   assert.match(sql, /alter table public\.clinic_branches enable row level security/i);
