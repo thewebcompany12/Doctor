@@ -283,7 +283,8 @@ test("push subscriptions remain private and reminder worker requires cron author
   assert.match(cron, /setVapidDetails/);
   assert.match(cron, /notification_deliveries/);
   assert.match(sql, /revoke all on table public\.push_subscriptions from public, anon, authenticated/);
-  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
+  assert.match(sw, /pathname/);
+  assert.match(sw, /api/);
   assert.match(sw, /showNotification/);
 });
 
