@@ -40,6 +40,10 @@ test("patient booking and private tracker provide installable PWA metadata", asy
   assert.match(booking, /wa\.me/);
   assert.match(tracker, /#secret=/);
   assert.match(tracker, /replaceState/);
+  assert.match(trackerPage, /searchParams/);
+  assert.match(tracker, /आपका टोकन/);
+  assert.match(tracker, /language=\{language\}/);
+  assert.match(reminders, /आपकी बारी है/);
 });
 
 test("clinic subscription page is server-authorized and exposes Clinic ID and plan controls", async () => {
