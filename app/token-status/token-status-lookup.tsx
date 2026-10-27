@@ -112,7 +112,7 @@ export default function TokenStatusLookup({ trackingConfigured, language }: { tr
       <button type="button" onClick={()=>void shareTracking()} className="ml-2 mt-4 inline-flex items-center gap-2 rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold"><Share2 size={15}/>{hi?"निजी ट्रैकिंग लिंक साझा करें":"Share private tracking link"}</button>
       <button type="button" disabled={busy||!online} onClick={()=>void fetchStatus(trackingSecret,false)} className="ml-2 mt-4 inline-flex items-center gap-2 rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold disabled:opacity-50"><RefreshCw size={15}/>{busy?(hi?"रीफ़्रेश हो रहा है…":"Refreshing…"):(hi?"अभी रीफ़्रेश करें":"Refresh now")}</button>
       <p className="mt-3 text-xs leading-5 text-[#65736d]">{hi?"स्थिति अपडेट: ":"Status refreshed "}{time(result.queue.updatedAt,language)} IST. {hi?"प्रतीक्षा समय केवल अनुमान है; परामर्श का समय बदल सकता है।":"Waiting time is an estimate only; consultation timing can change."}</p>
-      {trackingSecret&&<PatientReminders trackingSecret={trackingSecret} tokenStatus={result.token.status} tokensAhead={result.token.tokensAhead}/>}
+      {trackingSecret&&<PatientReminders trackingSecret={trackingSecret} tokenStatus={result.token.status} tokensAhead={result.token.tokensAhead} language={language}/>}
     </section>}
   </div>;
 }
