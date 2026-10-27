@@ -27,8 +27,8 @@ test("PWA service worker never caches private routes or API responses", async ()
   assert.match(sw, /url\.pathname\.startsWith\(\"\/clinics\/\"\)/);
   assert.match(sw, /\/offline\.html/);
   assert.match(sw, /privatePage/);
-  assert.match(sw, /fetch\\(request\\)\\.catch/);
-  assert.doesNotMatch(sw, /cache\\.put\\(/);
+  assert.match(sw, /fetch\(request\)\.catch/);
+  assert.doesNotMatch(sw, /cache\.put\(/);
 });
 
 test("patient booking and private tracker provide installable PWA metadata", async () => {
