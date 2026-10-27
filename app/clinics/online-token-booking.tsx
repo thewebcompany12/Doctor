@@ -38,7 +38,7 @@ export default function OnlineTokenBooking({ queueId, clinicName, doctorName, bo
   async function shareTracking() {
     if(!result||!trackingUrl)return;
     const text="Doctor Queue token "+result.token.displayToken+" for "+clinicName+" · "+doctorName+"\\nPrivate tracking link: "+trackingUrl;
-    if(navigator.share){try{await navigator.share({title:"My Doctor Queue token",text,url:trackingUrl});return;}catch{/* share dialog was cancelled */}}
+    if(navigator.share){try{await navigator.share({title:"My Doctor Queue token",text,url:trackingUrl});}catch{/* The user cancelled the native share sheet. */}return;}
     window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener,noreferrer");
   }
 
