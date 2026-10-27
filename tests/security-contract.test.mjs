@@ -33,6 +33,8 @@ test("patient booking and private tracker provide installable PWA metadata", asy
   const registration = await file("../app/pwa-registration.tsx");
   const booking = await file("../app/clinics/online-token-booking.tsx");
   const tracker = await file("../app/token-status/token-status-lookup.tsx");
+  const trackerPage = await file("../app/token-status/page.tsx");
+  const reminders = await file("../app/token-status/patient-reminders.tsx");
   assert.match(manifest, /display:\s*\"standalone\"/);
   assert.match(manifest, /\/icon\.svg/);
   assert.match(registration, /serviceWorker\.register/);
