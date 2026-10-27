@@ -82,7 +82,7 @@ export default function TokenStatusLookup({ trackingConfigured }: { trackingConf
     if(!trackingSecret||!result)return;
     const url=window.location.origin+"/token-status#secret="+trackingSecret;
     const text="Private Doctor Queue tracking for "+result.queue.clinicName+" — token "+result.token.displayToken+"\n"+url;
-    if(navigator.share){try{await navigator.share({title:"My Doctor Queue token",text,url});return;}catch{/* cancelled by user */}}
+    if(navigator.share){try{await navigator.share({title:"My Doctor Queue token",text,url});}catch{/* The user cancelled the native share sheet. */}return;}
     window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener,noreferrer");
   }
   const stale=!!result&&tick-new Date(result.queue.updatedAt).getTime()>120000;
