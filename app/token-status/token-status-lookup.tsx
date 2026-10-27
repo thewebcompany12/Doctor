@@ -39,7 +39,7 @@ export default function TokenStatusLookup({ trackingConfigured, language }: { tr
       setResult(body as Result);setTrackingSecret(secret);setLastRefresh(new Date().toISOString());setError("");
     }catch{setError(hi?"टोकन की स्थिति रीफ़्रेश नहीं हो सकी। कनेक्शन जाँचकर फिर प्रयास करें।":"Could not refresh token status. Check your connection and retry.");}
     finally{if(!silent)setBusy(false);}
-  },[]);
+  },[hi]);
 
   useEffect(()=>{
     setOnline(navigator.onLine);
@@ -68,15 +68,15 @@ export default function TokenStatusLookup({ trackingConfigured, language }: { tr
   }
   async function cancelToken(){
     if(!trackingSecret||!result||result.token.status!=="waiting")return;
-    if(!window.confirm("Cancel token "+result.token.displayToken+"? This cannot be undone online."))return;
+    if(!window.confirm(hi?"टोकन "+result.token.displayToken+" रद्द करें? इसे ऑनलाइन वापस नहीं लिया जा सकता।":"Cancel token "+result.token.displayToken+"? This cannot be undone online."))return;
     setCancelBusy(true);setError("");setMessage("");
     try{
       const response=await fetch("/api/public/tokens",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"cancel",trackingSecret})});
       const body=await response.json();
-      if(!response.ok){setError(typeof body.error==="string"?body.error:"Token cancellation failed.");return;}
+      if(!response.ok){setError(typeof body.error==="string"?body.error:(hi?"टोकन रद्द नहीं हो सका।":"Token cancellation failed."));return;}
       setResult(current=>current?{...current,token:{...current.token,status:body.token.status}}:current);
-      setMessage("Your waiting token was cancelled.");
-    }catch{setError("Could not cancel the token. Check your connection and retry.");}
+      setMessage(hi?"आपका प्रतीक्षा वाला टोकन रद्द कर दिया गया।":"Your waiting token was cancelled.");
+    }catch{setError(hi?"टोकन रद्द नहीं हो सका। कनेक्शन जाँचकर फिर प्रयास करें।":"Could not cancel the token. Check your connection and retry.");}
     finally{setCancelBusy(false);}
   }
   async function shareTracking(){
@@ -99,7 +99,7 @@ export default function TokenStatusLookup({ trackingConfigured, language }: { tr
     {error&&<p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {message&&<p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</p>}
     {result&&<section aria-live="polite" className="mt-5 rounded-xl border border-[#e1e9e4] bg-[#f8faf8] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm text-[#65736d]">{hi?"आपका टोकन":"Your token"}</p><p className="mt-1 text-3xl font-black text-[#147d55]">{result.token.displayToken}</p></div><span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold capitalize">{result.token.status.replaceAll("_"," ")}</span></div>
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm text-[#65736d]">{hi?"आपका टोकन":"Your token"}</p><p className="mt-1 text-3xl font-black text-[#147d55]">{result.token.displayToken}</p></div><span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold capitalize">{hi?({waiting:"प्रतीक्षा में",arrived:"पहुंच गए",called:"बुलाया गया",in_consultation:"परामर्श जारी",completed:"पूरा हुआ",cancelled:"रद्द",absent:"अनुपस्थित",skipped:"छोड़ा गया"} as Record<string,string>)[result.token.status]??result.token.status.replaceAll("_"," "):result.token.status.replaceAll("_"," ")}</span></div>
       <p className="mt-3 font-bold">{result.queue.clinicName}</p><p className="text-sm text-[#65736d]">{result.queue.doctorName}</p>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-xl bg-white p-3"><p className="text-xs text-[#65736d]">{hi?"अभी बुलाया जा रहा है":"Now calling"}</p><p className="mt-1 font-black">{result.queue.currentDisplayToken??"—"}</p></div>
@@ -108,7 +108,7 @@ export default function TokenStatusLookup({ trackingConfigured, language }: { tr
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#65736d]"><span>{online?(hi?"कनेक्टेड":"Connected"):(hi?"ऑफ़लाइन · पिछला परिणाम दिख रहा है":"Offline · showing last result")}</span><span>· {hi?"आख़िरी जाँच":"Last checked"} {lastRefresh?time(lastRefresh,language):"—"} IST</span>{stale&&<span className="rounded-full bg-amber-100 px-2 py-1 font-bold text-amber-900">{hi?"कतार की जानकारी पुरानी हो सकती है":"Queue data may be stale"}</span>}</div>
       {result.queue.queueStatus!=="open"&&<p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{hi?"कतार अभी "+result.queue.queueStatus.replaceAll("_"," ")+" है। आने से पहले क्लिनिक के निर्देशों का पालन करें।":"The queue is currently "+result.queue.queueStatus.replaceAll("_"," ")+". Follow clinic instructions before travelling."}</p>}
-      {result.token.status==="waiting"&&<button type="button" disabled={cancelBusy} onClick={()=>void cancelToken()} className="mt-4 rounded-full border border-red-200 px-4 py-2.5 text-sm font-bold text-red-800 disabled:opacity-50">{cancelBusy?"Cancelling…":"Cancel waiting token"}</button>}
+      {result.token.status==="waiting"&&<button type="button" disabled={cancelBusy} onClick={()=>void cancelToken()} className="mt-4 rounded-full border border-red-200 px-4 py-2.5 text-sm font-bold text-red-800 disabled:opacity-50">{cancelBusy?(hi?"रद्द हो रहा है…":"Cancelling…"):(hi?"प्रतीक्षा वाला टोकन रद्द करें":"Cancel waiting token")}</button>}
       <button type="button" onClick={()=>void shareTracking()} className="ml-2 mt-4 inline-flex items-center gap-2 rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold"><Share2 size={15}/>{hi?"निजी ट्रैकिंग लिंक साझा करें":"Share private tracking link"}</button>
       <button type="button" disabled={busy||!online} onClick={()=>void fetchStatus(trackingSecret,false)} className="ml-2 mt-4 inline-flex items-center gap-2 rounded-full border border-[#dbe5df] px-4 py-2.5 text-sm font-bold disabled:opacity-50"><RefreshCw size={15}/>{busy?(hi?"रीफ़्रेश हो रहा है…":"Refreshing…"):(hi?"अभी रीफ़्रेश करें":"Refresh now")}</button>
       <p className="mt-3 text-xs leading-5 text-[#65736d]">{hi?"स्थिति अपडेट: ":"Status refreshed "}{time(result.queue.updatedAt,language)} IST. {hi?"प्रतीक्षा समय केवल अनुमान है; परामर्श का समय बदल सकता है।":"Waiting time is an estimate only; consultation timing can change."}</p>
