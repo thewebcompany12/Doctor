@@ -7,7 +7,9 @@ self.addEventListener("fetch",event=>{
  if(request.method!=="GET")return;
  const url=new URL(request.url);
  if(url.origin!==self.location.origin)return;
- if(url.pathname.startsWith("/api/")||url.pathname.startsWith("/token-status")||url.pathname.startsWith("/queue/")||url.pathname.startsWith("/clinics/"))return;
+ if(url.pathname.startsWith("/api/"))return;
+ const privatePage=url.pathname.startsWith("/token-status")||url.pathname.startsWith("/queue/")||url.pathname.startsWith("/clinics/");
+ if(privatePage){if(request.mode==="navigate")event.respondWith(fetch(request).catch(()=>caches.match("/offline.html")));return;}
  if(request.mode==="navigate"){
   event.respondWith(fetch(request).catch(()=>caches.match("/offline.html")));
   return;
