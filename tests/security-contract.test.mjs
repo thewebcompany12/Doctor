@@ -4,6 +4,44 @@ import { readFile } from "node:fs/promises";
 
 const file = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
+
+test("patient token API uses private no-store responses and never returns patient identity", async () => {
+  const route = await file("../app/api/public/tokens/route.ts");
+  assert.match(route, /Cache-Control.*no-store, private/);
+  assert.match(route, /createHash\("sha256"\)/);
+  assert.match(route, /tracking_secret_hash/);
+  assert.match(route, /tracking_expires_at/);
+  assert.match(route, /tracking_revoked_at/);
+  assert.match(route, /p_idempotency_key/);
+  assert.match(route, /consume_public_tracking_rate_limit/);
+  assert.match(route, /tokensAhead/);
+  assert.doesNotMatch(route, /patient_name:\s*token\./);
+});
+
+test("PWA service worker never caches private routes or API responses", async () => {
+  const sw = await file("../public/sw.js");
+  assert.match(sw, /request\.method!==\"GET\"/);
+  assert.match(sw, /url\.pathname\.startsWith\(\"\/api\/\"\)/);
+  assert.match(sw, /url\.pathname\.startsWith\(\"\/token-status\"\)/);
+  assert.match(sw, /url\.pathname\.startsWith\(\"\/queue\/\"\)/);
+  assert.match(sw, /url\.pathname\.startsWith\(\"\/clinics\/\"\)/);
+  assert.match(sw, /\/offline\.html/);
+});
+
+test("patient booking and private tracker provide installable PWA metadata", async () => {
+  const manifest = await file("../app/manifest.ts");
+  const registration = await file("../app/pwa-registration.tsx");
+  const booking = await file("../app/clinics/online-token-booking.tsx");
+  const tracker = await file("../app/token-status/token-status-lookup.tsx");
+  assert.match(manifest, /display:\s*\"standalone\"/);
+  assert.match(manifest, /\/icon\.svg/);
+  assert.match(registration, /serviceWorker\.register/);
+  assert.match(booking, /\/api\/public\/tokens/);
+  assert.match(booking, /wa\.me/);
+  assert.match(tracker, /#secret=/);
+  assert.match(tracker, /replaceState/);
+});
+
 test("clinic subscription page is server-authorized and exposes Clinic ID and plan controls", async () => {
   const page = await file("../app/platform-admin/subscriptions/page.tsx");
   const provisioning = await file("../app/api/admin/clinics/route.ts");
