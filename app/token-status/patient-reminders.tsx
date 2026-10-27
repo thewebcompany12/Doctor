@@ -12,7 +12,8 @@ function decodeVapidKey(value:string) {
  return bytes.buffer;
 }
 
-export default function PatientReminders({ trackingSecret, tokenStatus, tokensAhead }: { trackingSecret:string; tokenStatus:string; tokensAhead:number }) {
+export default function PatientReminders({ trackingSecret, tokenStatus, tokensAhead, language="en" }: { trackingSecret:string; tokenStatus:string; tokensAhead:number; language?:"en"|"hi" }) {
+ const hi=language==="hi";
  const [mode,setMode]=useState<"off"|"browser"|"push"|"denied">("off");
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
@@ -24,20 +25,20 @@ export default function PatientReminders({ trackingSecret, tokenStatus, tokensAh
  useEffect(()=>{
   if(mode!=="browser"||!("Notification" in window)||Notification.permission!=="granted")return;
   let key="",title="",body="";
-  if(tokenStatus==="called"||tokenStatus==="in_consultation"){key="called";title="It’s your turn";body="The clinic has called your token. Please follow the clinic’s instructions.";}
-  else if(tokenStatus==="waiting"&&tokensAhead<=2){key="approaching";title="Your turn is approaching";body="You are getting close to your turn. Waiting time remains an estimate."}
+  if(tokenStatus==="called"||tokenStatus==="in_consultation"){key="called";title=hi?"आपकी बारी है":"It’s your turn";body=hi?"क्लिनिक ने आपका टोकन बुलाया है। कृपया क्लिनिक के निर्देशों का पालन करें।":"The clinic has called your token. Please follow the clinic’s instructions.";}
+  else if(tokenStatus==="waiting"&&tokensAhead<=2){key="approaching";title=hi?"आपकी बारी नज़दीक है":"Your turn is approaching";body=hi?"आपकी बारी नज़दीक है। प्रतीक्षा समय केवल अनुमान है।":"You are getting close to your turn. Waiting time remains an estimate."}
   if((key==="called"&&!notifyCalled)||(key==="approaching"&&!notifyApproaching))return;
   if(key&&key!==lastAlert.current){lastAlert.current=key;try{new Notification(title,{body,icon:"/icon.svg",tag:"doctor-queue-"+key});}catch{}}
  },[mode,tokenStatus,tokensAhead,notifyApproaching,notifyCalled]);
  async function enable() {
   setBusy(true);setMessage("");
   try {
-   if(!("Notification" in window)){setMessage("This browser does not support notifications.");return;}
+   if(!("Notification" in window)){setMessage(hi?"यह ब्राउज़र नोटिफ़िकेशन का समर्थन नहीं करता।":"This browser does not support notifications.");return;}
    const permission=await Notification.requestPermission();
    if(permission!=="granted"){setMode("denied");setMessage(permission==="denied"?"Notifications are blocked in browser settings.":"Notification permission was not granted.");return;}
    setMode("browser");
    if(!vapidKey||!("serviceWorker" in navigator)||!("PushManager" in window)){
-    setMessage("Foreground alerts are enabled while this page stays open. Background push is not configured or supported on this browser.");
+    setMessage(hi?"यह पेज खुला रहने तक अलर्ट चालू हैं। बैकग्राउंड पुश सेट नहीं है या इस ब्राउज़र में उपलब्ध नहीं है।":"Foreground alerts are enabled while this page stays open. Background push is not configured or supported on this browser.");
     return;
    }
    try{
@@ -48,9 +49,9 @@ export default function PatientReminders({ trackingSecret, tokenStatus, tokensAh
     const response=await fetch("/api/public/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"subscribe",trackingSecret,subscription:json,preferences:{turnApproaching:notifyApproaching,yourTurn:notifyCalled}})});
     const body=await response.json();
     if(!response.ok)throw new Error(typeof body.error==="string"?body.error:"Background push could not be enabled.");
-    setSubscription(sub);setMode("push");setMessage("Background push is enabled on this device. Delivery depends on server scheduling and provider availability.");
+    setSubscription(sub);setMode("push");setMessage(hi?"इस डिवाइस पर बैकग्राउंड पुश चालू है। डिलीवरी सर्वर शेड्यूल और प्रदाता की उपलब्धता पर निर्भर है।":"Background push is enabled on this device. Delivery depends on server scheduling and provider availability.");
    }catch(e){
-    setMode("browser");setMessage((e instanceof Error?e.message:"Background push setup failed.")+" Foreground alerts will work only while this page remains open.");
+    setMode("browser");setMessage((e instanceof Error?e.message:(hi?"बैकग्राउंड पुश सेट नहीं हो सका।":"Background push setup failed."))+(hi?" फ़ोरग्राउंड अलर्ट केवल पेज खुला रहने पर काम करेंगे।":" Foreground alerts will work only while this page remains open."));
    }
   }catch(e){setMessage(e instanceof Error?e.message:"Could not enable notifications.");}
   finally{setBusy(false);}
