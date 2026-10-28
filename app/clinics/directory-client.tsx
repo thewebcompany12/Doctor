@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, MapPin, Search, Stethoscope } from "lucide-react";
 import OnlineTokenBooking from "./online-token-booking";
 
@@ -25,6 +25,7 @@ export default function ClinicDirectoryClient({ clinics, queues, bookingConfigur
   const [specialty,setSpecialty]=useState("");
   const [language,setLanguage]=useState<"en"|"hi">(initialLanguage);
   const [onlineOnly,setOnlineOnly]=useState(false);
+  useEffect(()=>{ document.documentElement.lang=language==="hi"?"hi":"en"; },[language]);
   const text = language==="hi" ? {
     title:"क्लिनिक और डॉक्टर खोजें", intro:"केवल सार्वजनिक क्लिनिक जानकारी और असली कतार स्थिति दिखाई जाती है।",
     search:"क्लिनिक, डॉक्टर या विशेषज्ञता खोजें", city:"शहर", allCities:"सभी शहर", specialty:"विशेषज्ञता", allSpecialties:"सभी विशेषज्ञताएँ",
