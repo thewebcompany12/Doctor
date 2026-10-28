@@ -16,7 +16,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 
 ## Verification completed
 
-- Latest completed GitHub Actions run `40666094828` on commit `e23dc03e261927b8c0f1eb1e2d054d603df88c3f` passed: ESLint, TypeScript type checking, automated tests, production build, clean PostgreSQL 16 replay of all 57 migrations, RLS/grant assertions, two-clinic tenant-isolation tests, 20-request concurrent token allocation/idempotency stress test, and public online-booking rate-limit/tracking-privacy tests. It also passed the regression test preventing forwarded-header spoofing of public rate limits.
+- Latest completed GitHub Actions run on the current `main` commit passed: ESLint, TypeScript type checking, automated tests, production build, clean PostgreSQL 16 replay of all 57 migrations, RLS/grant assertions, two-clinic tenant-isolation tests, 20-request concurrent token allocation/idempotency stress test, and public online-booking rate-limit/tracking-privacy tests. It also passed the regression test preventing forwarded-header spoofing of public rate limits.
 - GitHub Actions applied the full migration chain to a clean PostgreSQL 16 test database using a minimal Supabase Auth/role shim.
 - CI assertions verified RLS is enabled on public base tables, anonymous reads are limited to the safe projection, and authenticated users do not have broad truncate privileges.
 - Synthetic two-clinic tests verified membership/token/appointment isolation, rejection of cross-clinic token issuance, staff appointment creation and status transitions, and anonymous aggregate-only queue visibility. Test data is rolled back.
