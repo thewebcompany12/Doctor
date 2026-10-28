@@ -16,7 +16,11 @@ const schema=z.object({
  preferences:z.object({turnApproaching:z.boolean(),yourTurn:z.boolean()}).optional()
 });
 function response(body:unknown,status=200){return NextResponse.json(body,{status,headers:{"Cache-Control":"no-store, private","Pragma":"no-cache"}});}
-function ip(request:Request){return request.headers.get("x-real-ip")??request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()??"unknown";}
+function ip(request:Request){
+ // Trust the platform-provided client IP only; an untrusted forwarded-for fallback
+ // would let callers rotate their apparent identity and evade per-IP throttling.
+ return request.headers.get("x-real-ip")?.trim()||"unknown";
+}
 function adminClient(){
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;
  if(!url||!key)return null;
