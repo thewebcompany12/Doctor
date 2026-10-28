@@ -12,7 +12,7 @@ The connected project remains the existing Next.js App Router / TypeScript appli
 - Atomic/idempotent queue operations, clinic-wide daily token limits with clinic-row serialization, appointment slot uniqueness, composite tenant foreign keys, least-privilege table grants and private-schema security-definer implementations behind invoker RPC wrappers.
 - Public queue status and clinic discovery are served from two read-only projection tables; neither exposes patient names, phone hashes, tracking secrets or appointment details.
 - Patient experience: bilingual clinic search/filtering, public clinic detail and QR/share links, live queue pages with Realtime plus polling fallback, private token tracking links, estimated own-token position, cancellation while waiting, installable PWA shell, safe offline fallback, opt-in foreground alerts and a server-side Web Push worker. Online booking now validates clinic opening hours, plan limits, request idempotency, rate limits and private tracking-token storage.
-- Version-matched source files for all 52 migrations applied to the connected Supabase project.
+- Version-matched source files for all 53 migrations applied to the connected Supabase project, including the recovered billing subscription foundation migration.
 
 ## Verification completed
 
