@@ -28,6 +28,7 @@ export default function TokenStatusLookup({ trackingConfigured, language }: { tr
   const [lastRefresh,setLastRefresh]=useState<string|null>(null);
   const [online,setOnline]=useState(true);
   const [tick,setTick]=useState(Date.now());
+  useEffect(()=>{ document.documentElement.lang=hi?"hi":"en"; },[hi]);
 
   const fetchStatus=useCallback(async(secret:string,silent=false)=>{
     if(!/^[a-fA-F0-9]{64}$/.test(secret)){if(!silent)setError(hi?"64 अक्षरों वाला निजी ट्रैकिंग सीक्रेट दर्ज करें या अपना निजी ट्रैकिंग लिंक खोलें।":"Enter the 64-character private tracking secret or open your private tracking link.");return;}
