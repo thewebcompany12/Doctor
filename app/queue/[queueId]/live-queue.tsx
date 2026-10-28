@@ -32,6 +32,7 @@ export default function LiveQueue({ initial, initialLanguage="en" }: { initial: 
   const [online,setOnline]=useState(true);
   const [realtime,setRealtime]=useState<"connecting"|"live"|"polling">("connecting");
   const [tick,setTick]=useState(Date.now());
+  useEffect(()=>{ document.documentElement.lang=language==="hi"?"hi":"en"; },[language]);
 
   const refresh=useCallback(async (manual=false)=>{
     if(manual) setBusy(true);
