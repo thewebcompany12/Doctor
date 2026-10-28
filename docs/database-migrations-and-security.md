@@ -1,6 +1,6 @@
 # Database migration and security notes
 
-## Applied production history (verified 2026-10-27)
+## Applied production history (verified 2026-10-28)
 
 The connected Supabase project reports these applied migration versions:
 
