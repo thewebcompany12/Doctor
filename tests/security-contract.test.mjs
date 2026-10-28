@@ -344,6 +344,17 @@ test("push subscriptions remain private and reminder worker requires cron author
   assert.match(sw, /showNotification/);
 });
 
+test("patient locale updates the document language for assistive technology", async () => {
+  const directory = await file("../app/clinics/directory-client.tsx");
+  const detailShare = await file("../app/clinics/clinic-share.tsx");
+  const live = await file("../app/queue/[queueId]/live-queue.tsx");
+  const tracker = await file("../app/token-status/token-status-lookup.tsx");
+  for (const source of [directory, detailShare, live, tracker]) {
+    assert.match(source, /document\.documentElement\.lang/);
+    assert.match(source, /language===\?"hi"\?"hi"\?"en"/);
+  }
+});
+
 test("patient queue page uses real safe snapshots and has polling fallback", async () => {
   const page = await file("../app/queue/[queueId]/page.tsx");
   const live = await file("../app/queue/[queueId]/live-queue.tsx");
