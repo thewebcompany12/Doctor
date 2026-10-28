@@ -17,10 +17,10 @@ Never create a Super Admin from public signup, a client-side profile edit, or a 
 
 ## Server-side service-role configuration
 
-The Vercel project currently has a `SUPABASE_SERVICE_ROLE_KEY` production environment-variable entry, but its value is empty. It is not usable until replaced with the actual key.
+The Vercel project has a `SUPABASE_SERVICE_ROLE_KEY` production environment-variable entry. The connected Vercel integration did not return a decrypted value (`decrypted=false`), so I cannot confirm whether the secret is populated or valid. Do not treat the entry's existence as proof that it works.
 
 1. In the Supabase Dashboard for project `kfzxebxwicfhbvwhdzrt`, open **Project Settings → API Keys** and copy the server-side `service_role` secret (not the publishable/anon key).
-2. In Vercel, open the `doctor-queue` project → **Settings → Environment Variables**. Edit the existing `SUPABASE_SERVICE_ROLE_KEY` entry and paste the secret as a **Sensitive/Encrypted** value for **Production only**. Do not add a `NEXT_PUBLIC_` prefix, put it in GitHub, or paste it into chat.
+2. In Vercel, open the `doctor-queue` project → **Settings → Environment Variables**. Inspect the existing `SUPABASE_SERVICE_ROLE_KEY` entry. If empty or invalid, paste the secret as a **Sensitive/Encrypted** value for **Production only**. Do not add a `NEXT_PUBLIC_` prefix, put it in GitHub, or paste it into chat.
 3. Trigger a production deployment after the environment change. Verify the clinic-provisioning and staff-invitation endpoints with a verified Super Admin and a synthetic clinic before onboarding real clinics.
 4. In Supabase Auth URL configuration, allow-list the deployed production callback URL used by the password recovery flow. Do not use a wildcard redirect.
 
