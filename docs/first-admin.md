@@ -17,7 +17,7 @@ Never create a Super Admin from public signup, a client-side profile edit, or a 
 
 ## Server-side service-role configuration
 
-The Vercel project has a `SUPABASE_SERVICE_ROLE_KEY` production environment-variable entry. The connected Vercel integration did not return a decrypted value (`decrypted=false`), so I cannot confirm whether the secret is populated or valid. Do not treat the entry's existence as proof that it works.
+The Vercel project has a `SUPABASE_SERVICE_ROLE_KEY` Production entry, but an authorized environment inspection confirmed that its stored value is empty. The `VAPID_PRIVATE_KEY` and `CRON_SECRET` Production entries are also empty. Do not treat the presence of an empty entry as a configured secret.
 
 1. In the Supabase Dashboard for project `kfzxebxwicfhbvwhdzrt`, open **Project Settings → API Keys** and copy the server-side `service_role` secret (not the publishable/anon key).
 2. In Vercel, open the `doctor-queue` project → **Settings → Environment Variables**. Inspect the existing `SUPABASE_SERVICE_ROLE_KEY` entry. If empty or invalid, paste the secret as a **Sensitive/Encrypted** value for **Production only**. Do not add a `NEXT_PUBLIC_` prefix, put it in GitHub, or paste it into chat.
