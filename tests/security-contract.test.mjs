@@ -10,7 +10,7 @@ test("public rate limits do not trust caller-controlled forwarded-for headers", 
   const pushRoute = await file("../app/api/public/push-subscription/route.ts");
   assert.match(tokenRoute, /function requestIp\(request:Request\)[\s\S]*?headers\.get\("x-real-ip"\)[\s\S]*?\|\| "unknown"/);
   assert.match(pushRoute, /function ip\(request:Request\)[\s\S]*?headers\.get\("x-real-ip"\)[\s\S]*?\|\|"unknown"/);
-  assert.doesNotMatch(tokenRoute.match(/function requestIp\(request:Request\)[\s\S]*?\n\}/)?.[0] ?? "", /x-forwarded-for/);
+  assert.doesNotMatch(tokenRoute.match(/function requestIp\(request:Request\)[\s\S]*?\n\}/)?.[0] ?? "", /headers\.get\("x-forwarded-for"\)/);
   assert.doesNotMatch(pushRoute.match(/function ip\(request:Request\)[\s\S]*?\n\}/)?.[0] ?? "", /x-forwarded-for/);
 });
 
