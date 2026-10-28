@@ -8,7 +8,7 @@ export default function ClinicShare({ slug, clinicCode, clinicName, language }: 
   const [url,setUrl]=useState("");
   const [copied,setCopied]=useState(false);
   const [shared,setShared]=useState(false);
-  useEffect(()=>setUrl(window.location.origin+"/clinics/"+encodeURIComponent(slug||clinicCode)+(language==="hi"?"?lang=hi":"")),[slug,clinicCode,language]);
+  useEffect(()=>{ document.documentElement.lang=language==="hi"?"hi":"en"; setUrl(window.location.origin+"/clinics/"+encodeURIComponent(slug||clinicCode)+(language==="hi"?"?lang=hi":"")); },[slug,clinicCode,language]);
   async function copy() {
     try { await navigator.clipboard.writeText(url); setCopied(true); } catch { setCopied(false); }
   }
