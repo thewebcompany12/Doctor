@@ -61,8 +61,6 @@ The connected Supabase project reports these applied migration versions:
 55. `20261028093555 billing_webhook_events_explicit_deny_policy`
 56. `20261028093624 billing_webhook_events_client_deny`
 57. `20261028093716 billing_foreign_key_indexes`
-56. `20261028093624 billing_webhook_events_client_deny`
-57. `20261028093716 billing_foreign_key_indexes`
 
 The repository contains version-matched SQL files for all 57 applied migrations. The billing foundation migration was reconstructed from the live schema catalog after discovering its applied version was missing from GitHub; its tables, constraints, indexes, RLS policies and role grants are now represented in version control. The online-token migration was accidentally applied twice through the connected migration tool; it is idempotent (`IF NOT EXISTS`/`CREATE OR REPLACE`) and both recorded versions are retained and represented by matching files so clean-install migration order remains reproducible. The foundation migration was reconstructed from live catalog metadata (columns, constraints, indexes, RLS policies and helper functions) because the original applied source was absent from GitHub. GitHub Actions successfully applied the full migration chain to a clean PostgreSQL 16 database with a minimal Supabase auth/role shim, then passed schema/RLS/grant assertions and synthetic two-clinic authorization checks. This validates migration order and SQL behavior in the CI harness; it is not a substitute for a full Supabase-managed local stack test.
 
