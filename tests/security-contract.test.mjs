@@ -350,3 +350,13 @@ test("patient queue page uses real safe snapshots and has polling fallback", asy
   assert.match(directory, /specialties/);
   assert.match(directory, /onlineOnly/);
 });
+
+test("push reminders have a Vercel schedule and require the server-side bearer secret", async () => {
+  const config = JSON.parse(await file("../vercel.json"));
+  const cron = await file("../app/api/cron/push-reminders/route.ts");
+  assert.ok(config.crons.some(job => job.path === "/api/cron/push-reminders" && job.schedule === "*/5 * * * *"));
+  assert.match(cron, /authorization.*Bearer /i);
+  assert.match(cron, /process\.env\.CRON_SECRET/);
+  assert.match(cron, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(cron, /NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/);
+});
