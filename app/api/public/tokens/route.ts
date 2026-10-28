@@ -23,8 +23,11 @@ function noStore(body: unknown,status=200) {
   return NextResponse.json(body,{status,headers:{"Cache-Control":"no-store, private","Pragma":"no-cache","Vary":"Cookie"}});
 }
 function requestIp(request:Request) {
-  return request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-}
+  // Vercel supplies x-real-ip at the trusted edge. Never trust the client-controlled
+  // leftmost x-forwarded-for value as a rate-limit identity; missing IPs share a
+  // conservative bucket instead of allowing header-spoofed limit evasion.
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+ }
 
 export async function POST(request: Request) {
   const parsed=schema.safeParse(await request.json().catch(()=>null));
