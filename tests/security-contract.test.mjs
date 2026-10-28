@@ -351,7 +351,7 @@ test("patient locale updates the document language for assistive technology", as
   const tracker = await file("../app/token-status/token-status-lookup.tsx");
   for (const source of [directory, detailShare, live, tracker]) {
     assert.match(source, /document\.documentElement\.lang/);
-    assert.match(source, /language===\?"hi"\?"hi"\?"en"/);
+    assert.match(source, /document\.documentElement\.lang\s*=\s*.*"hi".*"en"/);
   }
 });
 
